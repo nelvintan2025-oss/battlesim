@@ -1,0 +1,1747 @@
+<title>Singapore–Malaysia War Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an operations-room console. Assumption panel on the left (two columns, one per side), live result board on the right. */
+:root {
+  --bg: #f3f4f1;
+  --panel: #fbfbf9;
+  --ink: #161815;
+  --ink-2: #4c5049;
+  --ink-3: #7c8078;
+  --rule: #dcded8;
+  --track: #e4e6e0;
+  --sg: #2a78d6;
+  --my: #eb6834;
+  --draw: #9a9c95;
+  --focus: #161815;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121411; --panel: #1a1d19; --ink: #eef0ea; --ink-2: #b9bdb3; --ink-3: #868a82;
+    --rule: #2e322c; --track: #2b2f29; --sg: #3987e5; --my: #d95926; --draw: #80837c; --focus: #eef0ea;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121411; --panel: #1a1d19; --ink: #eef0ea; --ink-2: #b9bdb3; --ink-3: #868a82;
+  --rule: #2e322c; --track: #2b2f29; --sg: #3987e5; --my: #d95926; --draw: #80837c; --focus: #eef0ea;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 80px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(30px, 4.5vw, 46px); line-height: 1; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+h1 .sg { color: var(--sg); } h1 .my { color: var(--my); }
+.lede { margin: 0; color: var(--ink-2); max-width: 75ch; }
+h2 { font-family: var(--f-display); font-weight: 600; font-size: 20px; letter-spacing: 0.02em; text-transform: uppercase; margin: 0; }
+h3 { font-family: var(--f-display); font-weight: 600; font-size: 16px; letter-spacing: 0.03em; text-transform: uppercase; margin: 0; color: var(--ink-2); }
+.main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 980px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.results { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+@media (max-width: 980px) { .results { position: static; } }
+
+/* presets */
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 12px/1 var(--f-body); padding: 8px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); cursor: pointer; }
+.chip:hover { border-color: var(--ink-3); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.chip:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* knob table */
+.group { display: grid; gap: 0; }
+.group > h3 { padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+.colhead { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 6px 0 2px; font: 600 12px/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.colhead .sg { color: var(--sg); } .colhead .my { color: var(--my); }
+.row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); align-items: center; }
+.row:last-child { border-bottom: 0; }
+.row.single { grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr); }
+.lab { display: grid; gap: 1px; min-width: 0; }
+.lab b { font-weight: 600; font-size: 13px; }
+.lab small { color: var(--ink-3); font-size: 11.5px; line-height: 1.35; }
+.knob { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-width: 0; }
+.knob .src { grid-column: 1 / -1; color: var(--ink-3); font-size: 11px; line-height: 1.35; }
+.badge { display: inline-block; vertical-align: 1px; margin-left: 4px; font: 600 9.5px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; padding: 3px 5px; border-radius: 3px; border: 1px solid var(--rule); color: var(--ink-3); }
+.badge.data { color: var(--ink); border-color: var(--ink-3); }
+.knob output { font: 500 12.5px var(--f-mono); font-variant-numeric: tabular-nums; min-width: 6.5ch; text-align: right; }
+.knob output.changed { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+input[type="range"] { width: 100%; min-width: 0; accent-color: var(--ink-2); height: 22px; margin: 0; }
+.knob.sg input { accent-color: var(--sg); } .knob.my input { accent-color: var(--my); }
+@media (max-width: 560px) {
+  .row, .colhead { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .row .lab { grid-column: 1 / -1; }
+  .colhead span:first-child { display: none; }
+  .row.single { grid-template-columns: minmax(0, 1fr); }
+}
+.strat { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding-top: 10px; }
+@media (max-width: 560px) { .strat { grid-template-columns: minmax(0, 1fr); } }
+.scol { display: grid; gap: 5px; align-content: start; }
+.scol .sname { font: 600 12px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--c); }
+.scol.sg { --c: var(--sg); } .scol.my { --c: var(--my); }
+.schip { text-align: left; font: 500 13px var(--f-body); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); cursor: pointer; }
+.schip:hover { border-color: var(--ink-3); }
+.schip[aria-checked="true"] { border-color: var(--c); box-shadow: inset 3px 0 0 var(--c); font-weight: 600; }
+.schip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sdesc { margin: 2px 0 0; color: var(--ink-2); font-size: 12px; line-height: 1.45; }
+.mgrid { overflow-x: auto; }
+.mgrid table { border-collapse: collapse; font-size: 12px; min-width: 520px; width: 100%; }
+.mgrid th, .mgrid td { padding: 6px 6px; border-bottom: 1px solid var(--rule); text-align: center; }
+.mgrid th { font: 600 11px var(--f-mono); color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; vertical-align: bottom; }
+.mgrid th.rowh { text-align: left; color: var(--sg); }
+.mgrid th.colh { color: var(--my); }
+.mgrid td { font: 500 12px var(--f-mono); font-variant-numeric: tabular-nums; }
+.mgrid td .w { display: block; color: var(--ink); }
+.mgrid td .l { display: block; color: var(--ink-3); font-size: 11px; }
+.mgrid td.cur { outline: 2px solid var(--ink); outline-offset: -2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { font: 500 12px var(--f-mono); padding: 7px 10px; border: 0; background: var(--bg); color: var(--ink-2); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.btn { font: 500 12px var(--f-body); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--ink-3); }
+
+/* results */
+.odds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.odd { display: grid; gap: 2px; padding: 10px 12px; border-radius: 6px; background: var(--bg); border-top: 4px solid var(--c); }
+.odd .k { font: 600 12px var(--f-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+.odd .v { font: 700 clamp(30px, 4vw, 42px)/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.odd .d { font: 400 11.5px var(--f-mono); color: var(--ink-3); min-height: 1.4em; }
+.bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--panel); }
+.bar span { display: block; height: 100%; transition: width .25s ease; }
+@media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+.verdict { margin: 0; font-size: 15px; line-height: 1.55; }
+.verdict strong { font-weight: 600; }
+.status { font: 400 11.5px var(--f-mono); color: var(--ink-3); }
+.ends { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ends li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13px; }
+.ends i { width: 10px; height: 10px; border-radius: 2px; background: var(--c); }
+.ends .n { font: 500 12.5px var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.drivers { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 560px) { .drivers { grid-template-columns: minmax(0, 1fr); } }
+.dcol { display: grid; gap: 8px; align-content: start; }
+.dcol h3 { color: var(--c); }
+.dcol > div { display: grid; gap: 12px; }
+.drv { display: grid; gap: 3px; }
+.drv .t { font-size: 13px; line-height: 1.35; }
+.drv .m { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.drv .pair { display: grid; gap: 2px; }
+.drv .b { height: 6px; border-radius: 0 3px 3px 0; min-width: 2px; }
+.drv .b.hi { background: var(--c); }
+.drv .b.lo { background: var(--draw); }
+.drv .num { font: 500 11.5px var(--f-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty { color: var(--ink-3); font-size: 13px; margin: 0; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--ink-3); font: 10.5px var(--f-mono); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; background: var(--c); display: inline-block; }
+.charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 560px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.fine { color: var(--ink-3); font-size: 12px; margin: 0; max-width: 80ch; }
+details summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+details p { color: var(--ink-2); font-size: 13px; max-width: 75ch; }
+
+/* phone: sticky odds strip */
+.strip { display: none; }
+@media (max-width: 980px) {
+  .strip { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; gap: 14px; justify-content: center;
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    background: var(--panel); border-top: 1px solid var(--rule); font: 600 13px var(--f-mono); font-variant-numeric: tabular-nums; }
+  .strip b { color: var(--c); }
+}
+/* map replay */
+:root { --water: #d7e3e8; --land: #eceee6; --hill: #c9cdb8; --urban: #dfdfd8; --road: #ffffff; --coast: #a9ada3; --sgzone: rgba(42,120,214,.22); --myzone: rgba(235,104,52,.2); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --water: #15212a; --land: #262a24; --hill: #3a4033; --urban: #30332e; --road: #4a4e46; --coast: #4a4f47; --sgzone: rgba(57,135,229,.30); --myzone: rgba(217,89,38,.28); } }
+:root[data-theme="dark"] { --water: #15212a; --land: #262a24; --hill: #3a4033; --urban: #30332e; --road: #4a4e46; --coast: #4a4f47; --sgzone: rgba(57,135,229,.30); --myzone: rgba(217,89,38,.28); }
+.replay { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 980px) { .replay { grid-template-columns: minmax(0, 1fr); } }
+.mapbox { position: relative; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); background: var(--water); }
+#map { width: 100%; height: auto; display: block; }
+#map .place { fill: var(--ink-2); font: 500 11px var(--f-body); }
+#map .place.big { font: 700 13px var(--f-display); letter-spacing: .08em; fill: var(--ink-2); text-transform: uppercase; }
+#map .sea { fill: var(--ink-3); font: italic 11px var(--f-body); }
+#map .dot { fill: var(--ink-2); }
+#map .hilltxt { fill: var(--ink-3); font: italic 10px var(--f-body); }
+#map .lbl { font: 500 10.5px var(--f-mono); }
+.speed { display: flex; border: 1px solid var(--rule); border-radius: 6px; padding: 2px; background: var(--panel); }
+.speed button { font: 600 12px var(--f-mono); color: var(--ink-2); background: none; border: 0; border-radius: 4px; padding: 5px 7px; cursor: pointer; min-width: 30px; }
+.speed button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.viewtoggle { justify-self: start; display: flex; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 2px; }
+.viewtoggle button { font: 600 12px var(--f-body); color: var(--ink-2); background: none; border: 0; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+.viewtoggle button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+#map3d { width: 100%; cursor: grab; }
+#map3d:active { cursor: grabbing; }
+#map3d canvas { display: block; width: 100% !important; height: 100% !important; }
+.map3dmsg { aspect-ratio: 600 / 630; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--ink-2); font-size: 14px; }
+.view3dctl { display: grid; gap: 6px; }
+.map3dmsg[hidden], .view3dctl[hidden], #map3d[hidden] { display: none; }
+#map .halo { paint-order: stroke; stroke: var(--panel); stroke-width: 3.5px; stroke-linejoin: round; }
+.legend { display: block; }
+.legend .lg { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; white-space: nowrap; }
+.legend .lg svg { vertical-align: middle; }
+#map .flow { stroke-dasharray: 6 9; animation: flow 0.8s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -15; } }
+@media (prefers-reduced-motion: reduce) { #map .flow { animation: none; } }
+.dayhud { position: absolute; left: 10px; top: 10px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; display: grid; gap: 0; }
+.dayhud b { font: 700 26px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.dayhud span { font: 400 11px var(--f-mono); color: var(--ink-3); }
+.ctrl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ctrl input[type=range] { flex: 1 1 200px; accent-color: var(--ink-2); }
+.pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.stats { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.stat { display: grid; gap: 6px; padding: 10px 12px; background: var(--bg); border-radius: 6px; border-top: 4px solid var(--c); }
+.stat .k { font: 600 12px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.meter { display: grid; gap: 2px; }
+.meter .top { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); }
+.meter .top b { font: 500 12px var(--f-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.meter .tr { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+.meter .tr i { display: block; height: 100%; background: var(--c); }
+.sects { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.sects li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 12.5px; }
+.sects .v { font: 500 12px var(--f-mono); white-space: nowrap; }
+.inset { position: absolute; left: 8px; bottom: 8px; width: 46%; max-width: 260px; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 4px; }
+.inset svg { display: block; width: 100%; height: auto; }
+.inset text { font: 500 8px var(--f-mono); fill: var(--ink-2); }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; max-height: 300px; overflow-y: auto; border-top: 1px solid var(--rule); }
+.log li { display: grid; grid-template-columns: 4.5ch minmax(0, 1fr); gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
+.log li .d { font: 500 12px var(--f-mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.log li.future { opacity: .35; }
+.log li.now { font-weight: 600; }
+.log li i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); margin-right: 6px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Hypothetical · simulation · public open-source estimates</div>
+    <h1><span class="sg">Singapore</span> vs <span class="my">Malaysia</span>: who wins, and why?</h1>
+    <p class="lede">Move the sliders to change the assumptions. Each change re-fights the war hundreds of times with random luck and shows how often each side wins, how the wars end, and which assumptions decide it. This is a simplified, abstract model for hobbyist what-if exploration. It is a thought experiment, not a forecast: the two countries are close partners and no such conflict is expected.</p>
+  </header>
+
+  <div class="main">
+    <section class="panel" aria-label="Assumptions">
+      <div style="display:grid;gap:8px">
+        <h2>Assumptions</h2>
+        <div class="presets" id="presets" role="group" aria-label="Preset scenarios"></div>
+      </div>
+      <div id="knobs"></div>
+      <div class="actions">
+        <span class="status">Runs per update</span>
+        <div class="seg" id="runs" role="group" aria-label="Runs per update"></div>
+        <button class="btn" id="reroll" type="button">Re-roll the dice</button>
+        <button class="btn" id="reset" type="button">Reset to baseline</button>
+      </div>
+    </section>
+
+    <section class="panel results" aria-label="Results" aria-live="polite">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
+        <h2>Result</h2><span class="status" id="status"></span>
+      </div>
+      <div class="odds">
+        <div class="odd" style="--c:var(--sg)"><span class="k">Singapore wins</span><span class="v" id="pA">–</span><span class="d" id="dA"></span></div>
+        <div class="odd" style="--c:var(--my)"><span class="k">Malaysia wins</span><span class="v" id="pB">–</span><span class="d" id="dB"></span></div>
+        <div class="odd" style="--c:var(--draw)"><span class="k">No decision</span><span class="v" id="pS">–</span><span class="d" id="dS"></span></div>
+      </div>
+      <div class="bar" id="bar" aria-hidden="true"><span style="background:var(--sg)"></span><span style="background:var(--my)"></span><span style="background:var(--draw)"></span></div>
+      <p class="verdict" id="verdict"></p>
+
+      <div style="display:grid;gap:8px">
+        <h3>What decides it with these assumptions</h3>
+        <p class="fine">Each line compares the runs where a factor came out high (or an event happened) with the runs where it came out low (or didn't). The coloured bar is the win rate when the condition holds; the grey bar is the win rate when it doesn't.</p>
+        <div class="drivers">
+          <div class="dcol" style="--c:var(--sg)"><h3>Singapore wins more when…</h3><div id="drvA"></div></div>
+          <div class="dcol" style="--c:var(--my)"><h3>Malaysia wins more when…</h3><div id="drvB"></div></div>
+        </div>
+      </div>
+
+      <div style="display:grid;gap:8px">
+        <h3>How the wars end</h3>
+        <ul class="ends" id="ends"></ul>
+      </div>
+
+      <div class="charts">
+        <div style="display:grid;gap:6px;min-width:0">
+          <h3>How long it lasts</h3>
+          <svg class="chart" id="hist" viewBox="0 0 320 170" role="img" aria-label="Histogram of war length in days, by outcome"></svg>
+        </div>
+        <div style="display:grid;gap:6px;min-width:0">
+          <h3>Where the front goes</h3>
+          <svg class="chart" id="front" viewBox="0 0 320 170" role="img" aria-label="Front line over time for a sample of runs"></svg>
+        </div>
+      </div>
+      <div class="legend"><span style="--c:var(--sg)"><i></i>Singapore wins</span><span style="--c:var(--my)"><i></i>Malaysia wins</span><span style="--c:var(--draw)"><i></i>No decision</span></div>
+
+      <div style="display:grid;gap:8px">
+        <h3>Strategy match-ups</h3>
+        <p class="fine">Fight every Singapore strategy against every Malaysia strategy with your other assumptions, 250 wars each. Each cell shows Singapore's win chance, then Malaysia's. The outlined cell is your current pick.</p>
+        <div><button class="btn" id="matchBtn" type="button">Compare all strategy match-ups</button></div>
+        <div class="mgrid" id="mgrid"></div>
+      </div>
+      <details>
+        <summary>Where the default numbers come from</summary>
+        <p>Inputs marked <b>Count</b> are published figures you can check: personnel and reservists from the IISS Military Balance 2024, aircraft and ships from the IISS and the two forces' public fleet lists. Inputs marked <b>Estimate</b> can't be counted, so each shows the reasoning behind its default. The model turns counts into power like this: fighting troops are 75% of active personnel; reserves are reservists × the ready share; air power is combat aircraft × the share ready to fly; naval power is 5 per frigate, 4 per submarine and 2 per corvette or missile patrol ship. For scale, Singapore spends about US$13 billion a year on defence and Malaysia about US$4 billion (SIPRI, 2023–24). New deliveries, such as Singapore's F-35Bs and Malaysia's FA-50s and LCS frigates, are left out until they enter service; add them with the sliders.</p>
+      </details>
+      <details>
+        <summary>How the model works</summary>
+        <p>Each day, both sides' combat power is troops × equipment × training × morale × supply × air and sea control × command and surveillance × a bonus for fighting on home ground. Losses follow a noisy Lanchester square law, and the front moves toward the weaker side. Reservists arrive after the mobilisation delay. Losses and lost ground wear down morale. A side loses when its core territory falls (the front passes its strategic depth), its army breaks, or its morale collapses. Otherwise the war ends undecided at a ceasefire or after the maximum length.</p>
+        <p>The uncertainty slider spreads every number you set by that much in each run, so no two runs are the same. That spread is what lets the page tell which assumptions matter. Default numbers are rough public estimates (IISS Military Balance, SIPRI, public fleet listings). The air and naval indices compare the two sides; their absolute values mean nothing.</p>
+      </details>
+    </section>
+  </div>
+  <section class="panel" aria-label="Day-by-day replay">
+    <div style="display:grid;gap:6px">
+      <h2>Day-by-day replay</h2>
+      <p class="fine">Pick one of the simulated wars and watch it unfold. The line is the front: shading shows who holds the ground. Dashed lines mark each side's core, set by the strategic-depth sliders. Coastlines, roads and built-up areas are real map data. The front, unit markers and arrows are abstract: they are drawn from each side's simulated strength in six sectors, not real unit locations.</p>
+    </div>
+    <div class="pick" id="pick" role="group" aria-label="Choose a war to replay"></div>
+    <div class="replay">
+      <div style="display:grid;gap:10px;min-width:0">
+      <div class="viewtoggle" id="viewtoggle" role="group" aria-label="Map view"><button type="button" data-view="2d" aria-pressed="true">2D map</button><button type="button" data-view="3d" aria-pressed="false">3D view (rotate, stand on the ground)</button></div>
+      <div class="mapbox">
+        <div id="map3d" hidden></div><div class="map3dmsg" id="map3dmsg" hidden></div>
+        <svg id="map" viewBox="0 0 600 630" role="img" aria-label="Schematic map of Singapore and southern Johor showing the front line"></svg>
+        <div class="dayhud"><b id="hudDay">Day 0</b><span id="hudFront"></span></div>
+        <div class="inset" aria-label="Overview: Peninsular and East Malaysia"><svg id="inset" viewBox="0 0 220 82"></svg></div>
+      </div>
+      <div class="view3dctl" id="view3dctl" hidden>
+        <div class="pick" role="group" aria-label="Camera">
+          <button type="button" class="chip" data-v="tilted" aria-pressed="true">Tilted</button>
+          <button type="button" class="chip" data-v="overhead" aria-pressed="false">Overhead</button>
+          <button type="button" class="chip" data-v="low" aria-pressed="false">Low flight</button>
+          <button type="button" class="chip" data-v="woodlands" aria-pressed="false">Stand in Woodlands</button>
+          <button type="button" class="chip" data-v="jb" aria-pressed="false">Stand in Johor Bahru</button>
+        </div>
+        <p class="fine">Drag to rotate, scroll or pinch to zoom, right-drag or shift-drag to pan. Double-click anywhere on the ground to stand there and look at the front; then drag to look around and use W A S D or the arrow keys to walk. Height is exaggerated 6 times so hills and the front wall stand out.</p>
+      </div>
+      <p class="fine legend"><span class="lg"><svg width="16" height="11" viewBox="-8 -5.5 16 11"><rect x="-7" y="-4.5" width="14" height="9" fill="var(--panel)" stroke="var(--ink-2)" stroke-width="1.6"/><ellipse rx="4.2" ry="2.4" fill="none" stroke="var(--ink-2)" stroke-width="1.3"/></svg> spearhead</span><span class="lg"><svg width="16" height="11" viewBox="-8 -5.5 16 11"><rect x="-7" y="-4.5" width="14" height="9" fill="var(--panel)" stroke="var(--ink-2)" stroke-width="1.6"/><path d="M-6,-3.5 L6,3.5 M6,-3.5 L-6,3.5" stroke="var(--ink-2)" stroke-width="1.1"/></svg> holding or second line</span>Each marker is about 5,000 frontline troops. Markers shift between sectors as each side moves its weight, and split into spearheads where it attacks. Curved arrows are pincers wheeling round a sector that is holding out; the ring around it fills as the pocket closes. Once sealed, a pocket holds out behind the enemy's line until it is relieved, breaks out, surrenders or is wiped out.</p>
+      </div>
+      <div style="display:grid;gap:14px;min-width:0">
+        <div class="ctrl">
+          <button class="btn" id="play" type="button">▶ Play</button>
+          <div class="speed" id="speed" role="group" aria-label="Replay speed"><button type="button" data-s="0.25">×¼</button><button type="button" data-s="0.5">×½</button><button type="button" data-s="1" aria-pressed="true">×1</button><button type="button" data-s="2">×2</button><button type="button" data-s="4">×4</button><button type="button" data-s="8">×8</button></div>
+          <input type="range" id="day" min="0" max="10" step="1" value="0" aria-label="Day">
+          <span class="status" id="dayOf"></span>
+        </div>
+        <div class="stats">
+          <div class="stat" style="--c:var(--sg)"><span class="k">Singapore</span><div id="stA"></div></div>
+          <div class="stat" style="--c:var(--my)"><span class="k">Malaysia</span><div id="stB"></div></div>
+        </div>
+        <div style="display:grid;gap:6px">
+          <h3>Front by sector</h3>
+          <ul class="sects" id="sectors"></ul>
+        </div>
+        <div style="display:grid;gap:6px">
+          <h3>Events</h3>
+          <ul class="log" id="log"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="strip" aria-hidden="true"><span>SG <b style="--c:var(--sg)" id="sA">–</b></span><span>MY <b style="--c:var(--my)" id="sB">–</b></span><span>Draw <b style="--c:var(--draw)" id="sS">–</b></span></div>
+
+<script id="engine-src">
+/*ENGINE*/
+</script>
+<script>
+const BASE = /*SCENARIO*/;
+
+// Knobs: [id, label, help, min, max, step, sgDefault, myDefault, format]
+// Knobs: [id, label, help, min, max, step, sgDefault, myDefault, format, kind, sgSource, mySource]
+// kind "data" = a published count; "est" = a judgement call with the reasoning shown.
+const SIDE_KNOBS = [
+  ["Personnel", [
+    ["active", "Active-duty personnel", "Thousands. 75% are counted as fighting troops", 10, 300, 1, 51, 113, "k", "data",
+      "~51,000 active (IISS Military Balance 2024)", "~113,000 active (IISS Military Balance 2024)"],
+    ["reservists", "Reservists", "Thousands on the reserve rolls", 0, 400, 2, 252, 52, "k", "data",
+      "~252,500 operationally ready NSmen (IISS 2024)", "~51,600 reservists (IISS 2024)"],
+    ["reserve_ready", "Reservists ready to fight", "Share of reservists who are equipped and combat-ready", 0, 100, 5, 50, 50, "%", "est",
+      "Assumption: half. NSmen do yearly in-camp training", "Assumption: half"],
+    ["mobilization_delay", "Days before reservists arrive", "Time to call up and deploy", 0, 10, 1, 1, 3, "d", "est",
+      "SAF practises call-up within hours in open mobilisation drills", "Assumption: slower call-up, no regular drills reported"],
+  ]],
+  ["Air power", [
+    ["aircraft", "Combat aircraft", "Fighters and light attack jets", 0, 200, 1, 100, 38, "n", "data",
+      "40 F-15SG + ~60 F-16C/D (IISS 2024)", "18 Su-30MKM + 8 F/A-18D + ~12 Hawk 108/208 (IISS 2024)"],
+    ["air_ready", "Aircraft ready to fly", "Share serviceable on any given day", 20, 100, 5, 80, 60, "%", "est",
+      "Assumption: 80%. Supported by G550 AEW and A330 tankers", "Assumption: 60%. The Su-30MKM fleet has had widely reported serviceability problems"],
+  ]],
+  ["Sea power", [
+    ["frigates", "Frigates", "Each counts 5 in the naval index", 0, 20, 1, 6, 2, "n", "data",
+      "6 Formidable class", "2 Lekiu class (the new LCS frigates are not yet delivered)"],
+    ["subs", "Submarines", "Each counts 4 in the naval index", 0, 12, 1, 4, 2, "n", "data",
+      "2 Archer + 2 Invincible class", "2 Scorpène class"],
+    ["corvettes", "Corvettes & missile patrol ships", "Each counts 2 in the naval index", 0, 30, 1, 8, 8, "n", "data",
+      "8 Independence-class littoral mission vessels", "2 Kasturi corvettes + 6 Kedah-class patrol vessels"],
+  ]],
+  ["East Malaysia & forces far away", [
+    ["remote_share", "Forces stationed far from the front", "Share of troops that must first cross the sea to join the fight", 0, 60, 5, 5, 35, "%", "data",
+      "Small detachments training in the US and Australia", "2 of the army's 4 divisions are based in Sabah and Sarawak (1st and 5th Divisions)"],
+    ["remote_delay", "Days before they start moving", "Time to embark ships and aircraft", 0, 20, 1, 3, 5, "d", "est",
+      "Assumption: flown home quickly", "Assumption: about 5 days to assemble shipping across the South China Sea"],
+  ]],
+  ["Quality", [
+    ["quality", "Equipment quality", "1.0 = modern Western standard", 0.3, 1.5, 0.05, 1.05, 0.75, "x", "est",
+      "Leopard 2SG tanks, Hunter and Bionix IFVs, HIMARS", "48 PT-91M tanks, AV8 Gempita, many older APCs"],
+    ["training", "Training & leadership", "1.0 = top professional force", 0.3, 1.2, 0.05, 0.8, 0.85, "x", "est",
+      "Mostly conscripts and reservists (2 years full-time service)", "All-volunteer professional army"],
+    ["c2", "Command, control & surveillance", "Drones, AEW, networks, intelligence", 0.5, 1.5, 0.05, 1.2, 0.95, "x", "est",
+      "G550 AEW, Hermes and Heron drones, networked command", "No AEW aircraft, fewer drones"],
+  ]],
+  ["Will & supply", [
+    ["morale", "Starting morale", "Will to fight at the outbreak", 20, 100, 5, 75, 75, "%", "est",
+      "Assumption: equal", "Assumption: equal"],
+    ["morale_sensitivity", "Casualty sensitivity", "How fast losses and lost ground break the will to fight", 0.3, 2.5, 0.1, 1.2, 0.9, "x", "est",
+      "Assumption: higher. Small population, no war in living memory", "Assumption: moderate"],
+    ["logistics", "Logistics & supply", "Fuel, ammunition, food, water", 30, 100, 5, 85, 80, "%", "est",
+      "Short supply lines, but imports over 90% of its food and part of its water from Johor", "Larger territory, grows its own food"],
+  ]],
+  ["Manoeuvre", [
+    ["pincer", "Pincer aggressiveness", "How hard reserves are fed to breakthroughs to encircle the other side", 0, 100, 5, 50, 40, "%", "est",
+      "Assumption: SAF doctrine stresses fast, combined-arms manoeuvre", "Assumption"],
+    ["retreat", "Willingness to retreat from a pocket", "Pull back and give up ground rather than risk being surrounded", 0, 100, 5, 30, 60, "%", "est",
+      "Assumption: lower, there is little ground on the island to give up", "Assumption: higher, Johor gives room to trade space for time"],
+    ["siege", "Storm encircled enemy troops", "High: assault pockets to finish them fast, at a cost. Low: seal them off and starve them into surrender, which ties troops down longer", 0, 100, 5, 40, 30, "%", "est",
+      "Assumption: casualty-averse conscript army prefers to seal and wait", "Assumption: larger army can afford to contain pockets"],
+    ["breakout", "Trapped troops try to break out", "How readily surrounded troops attack outward instead of digging in to wait for relief or giving up", 0, 100, 5, 60, 50, "%", "est",
+      "Assumption: relief is never far away on a small front", "Assumption"],
+  ]],
+  ["Supplies & economy", [
+    ["water_self", "Water self-sufficiency", "Share of water needs met without imports", 0, 100, 5, 60, 100, "%", "est",
+      "NEWater, desalination and local reservoirs; the rest is piped from Johor (PUB)", "Self-sufficient"],
+    ["water_stock", "Water reserves", "Days the country could last with no imports at all", 0, 180, 5, 30, 60, "d", "est",
+      "Assumption: reservoir storage", "Assumption"],
+    ["food_self", "Food self-sufficiency", "Share of food produced at home", 0, 100, 5, 10, 70, "%", "data",
+      "Produces under 10% of its food (Singapore Food Agency)", "Estimate: about 60–70% self-sufficient in rice"],
+    ["food_stock", "Food stockpiles", "Days of food in reserve", 0, 365, 5, 60, 45, "d", "est",
+      "Assumption: national rice stockpile and other reserves", "Assumption"],
+    ["fuel_self", "Fuel self-sufficiency", "Share of oil needs met at home", 0, 100, 5, 0, 90, "%", "data",
+      "No oil of its own; all crude is imported", "Oil and gas producer (Petronas)"],
+    ["fuel_stock", "Fuel reserves", "Days of fuel in storage", 0, 365, 5, 90, 45, "d", "est",
+      "Assumption: large storage at the Jurong Island refining hub", "Assumption"],
+    ["trade_dep", "Trade dependence", "Exports plus imports, % of GDP. Higher means a blockade hurts more", 20, 400, 10, 320, 130, "%", "data",
+      "About 320% of GDP (World Bank)", "About 130% of GDP (World Bank)"],
+    ["econ_tol", "Economic pain tolerance", "GDP loss (% of a year) the public will accept before demanding peace", 2, 60, 1, 25, 25, "%", "est",
+      "Assumption: Ukraine's economy shrank about 30% in 2022 and it fought on", "Assumption"],
+  ]],
+  ["Special operations", [
+    ["op_raid", "Special forces raid", "Chance of a raid on command posts and air defences in the first days", 0, 100, 5, 30, 30, "%", "est",
+      "Commando and special operations units", "Grup Gerak Khas and PASKAL"],
+    ["op_airborne", "Airborne or heliborne landing", "Chance of a landing 10–20 km behind the front. It must link up within 4 days or be lost", 0, 100, 5, 10, 15, "%", "est",
+      "Heliborne Guards units", "10th Parachute Brigade"],
+    ["op_amphib", "Amphibious landing on a flank", "Chance of a seaborne hook. Success depends on sea control", 0, 100, 5, 15, 5, "%", "est",
+      "4 Endurance-class landing ships", "Limited amphibious shipping"],
+    ["op_sabotage", "Sabotage of water and fuel", "Chance saboteurs hit the other side's water works and fuel depots", 0, 100, 5, 15, 25, "%", "est",
+      "Assumption", "Assumption"],
+  ]],
+  ["Geography", [
+    ["terrain_defense", "Home-ground defence bonus", "Urban terrain, prepared positions", 1, 2.5, 0.05, 1.6, 1.25, "x", "est",
+      "Dense urban island, prepared defences", "Johor Bahru city, plantations and jungle"],
+    ["depth", "Strategic depth", "Ground the enemy must take to reach your core", 5, 300, 5, 15, 80, "km", "est",
+      "Island is ~27 km north to south; the central area is ~15 km from the Strait", "Assumption: ~80 km to the Kluang–Kota Tinggi belt"],
+  ]],
+];
+// Strategies: doctrine-level choices, each a bundle of modifiers on the model's inputs (days are from the start of the war).
+const STRATEGIES = {
+  A: [
+    { name: "Balanced defence", desc: "Default. Defend the Strait, counter-attack when stronger.", posture: "defend", mods: [] },
+    { name: "Forward defence", desc: "Take the fight into Johor early to win space away from the city. Faster advances, but longer supply lines and no home-ground bonus at the start.",
+      posture: "attack", tempo: 1.5, mods: [["A", "supply_range", 1.25], ["A", "logistics", 0.95]] },
+    { name: "Fortress island", desc: "Hold the island and wait for outside pressure. Stronger urban defence and steadier morale, but little counter-attacking.",
+      posture: "defend", tempo: 0.5, mods: [["A", "terrain_defense", 1.25], ["A", "morale_sensitivity", 0.85]] },
+    { name: "Air & missile campaign first", desc: "Spend the first week winning the air and hitting command and supply, then push on the ground.",
+      posture: "defend", mods: [["A", "air", 1.3, 0, 7], ["B", "c2", 0.8, 1, 10], ["B", "logistics", 0.85, 2, 20], ["A", "tempo", 0.6, 0, 6]] },
+    { name: "Drones & precision strike", desc: "Lean on drones, loitering munitions and networked sensors. Sharper fighting power, more spent on munitions.",
+      posture: "defend", mods: [["A", "c2", 1.15], ["A", "quality", 1.08], ["A", "logistics", 0.95]] },
+  ],
+  B: [
+    { name: "Balanced defence", desc: "Default. Hold Johor, attack when stronger.", posture: "defend", mods: [] },
+    { name: "Rapid thrust across the Strait", desc: "Strike hard and fast before Singapore's reservists arrive. Faster advances, but stretched supply and no home-ground bonus at the start.",
+      posture: "attack", tempo: 1.6, mods: [["B", "supply_range", 0.8], ["B", "logistics", 0.9]] },
+    { name: "Blockade & siege", desc: "Avoid a costly assault. Cut Singapore's supplies and wait for its will to crack.",
+      posture: "defend", tempo: 0.5, mods: [["B", "blockade", 2.0], ["A", "water_cut", 1, 0, 1e9, 1]] },
+    { name: "Defend in depth", desc: "Trade ground for time in Johor's plantations and towns, bleeding any advance.",
+      posture: "defend", tempo: 0.7, mods: [["B", "terrain_defense", 1.2], ["B", "morale_sensitivity", 0.85], ["B", "supply_range", 1.2]] },
+    { name: "Drone & missile swarm", desc: "Mass cheap drones and missiles against Singapore's air bases and air defences.",
+      posture: "defend", mods: [["B", "c2", 1.15], ["B", "quality", 1.08, 0, 10], ["A", "air", 0.85], ["B", "logistics", 0.95]] },
+  ],
+};
+
+// Front sectors, west to east. relA/relB: how much each side's home-ground bonus applies there; crossing: penalty for whoever attacks across the water.
+const SECTORS = [
+  // mobility: how fast ground can be gained there (open plantations and roads vs city blocks, river and swamp jungle)
+  { name: "Pontian coast", lon: [103.2, 103.5], weight: 0.12, relA: 0.8, relB: 0.7, crossing: 0.5, mobility: 1.3 },
+  { name: "Gelang Patah–Tuas", lon: [103.5, 103.68], weight: 0.18, relA: 1.1, relB: 0.8, crossing: 0.8, mobility: 1.1 },
+  { name: "Causeway (Johor Bahru–Woodlands)", lon: [103.68, 103.8], weight: 0.26, relA: 1.5, relB: 1.4, crossing: 0.9, mobility: 0.6 },
+  { name: "Seletar–Pasir Gudang", lon: [103.8, 103.92], weight: 0.18, relA: 1.2, relB: 1.0, crossing: 0.75, mobility: 0.8 },
+  { name: "Johor River–Pulau Ubin", lon: [103.92, 104.02], weight: 0.14, relA: 0.9, relB: 1.2, crossing: 0.65, mobility: 0.7 },
+  { name: "Kota Tinggi–Changi", lon: [104.02, 104.2], weight: 0.12, relA: 0.8, relB: 1.7, crossing: 0.55, mobility: 0.55 },
+];
+
+const EVENT_KNOBS = [
+  ["ev_ceasefire", "Chance outside powers force a ceasefire", "UN, ASEAN or great-power pressure", 0, 100, 5, 40, "%"],
+  ["ceasefire_day", "Typical day the ceasefire lands", "Varies from about half to double this", 5, 365, 5, 90, "day"],
+  ["ev_mysurprise", "Chance Malaysia achieves surprise", "Strikes before Singapore mobilises", 0, 100, 5, 25, "%"],
+  ["ev_sgsurprise", "Chance Singapore achieves surprise", "Pre-emptive strikes on airfields and command", 0, 100, 5, 25, "%"],
+  ["ev_water", "Chance Malaysia cuts the water pipeline", "Johor water is piped to Singapore across the Causeway", 0, 100, 5, 60, "%"],
+  ["ev_monsoon", "Chance monsoon weather grounds aircraft", "Halves the value of air power", 0, 100, 5, 30, "%"],
+  ["ev_myhelp", "Chance an outside power arms Malaysia", "Extra aircraft and kit from day 10", 0, 100, 5, 15, "%"],
+  ["ev_sghelp", "Chance an outside power arms Singapore", "Extra aircraft and spares from day 10", 0, 100, 5, 15, "%"],
+  ["max_turns", "Longest war considered", "Undecided after this counts as a stalemate", 10, 730, 5, 365, "day"],
+  ["uncertainty", "Uncertainty in every number", "How far each input may vary from your setting in each run", 0, 40, 5, 15, "±%"],
+];
+const EVENT_NAME = {
+  ev_ceasefire: "International ceasefire imposed", ev_mysurprise: "Malaysia achieves surprise",
+  ev_sgsurprise: "Singapore achieves surprise", ev_water: "Water and food imports to Singapore cut",
+  ev_monsoon: "Monsoon weather limits air operations", ev_myhelp: "Outside power arms Malaysia mid-war",
+  ev_sghelp: "Outside power arms Singapore mid-war",
+};
+const EVENT_PHRASE = {
+  "International ceasefire imposed": ["outside powers force a ceasefire", "no ceasefire is imposed"],
+  "Malaysia achieves surprise": ["Malaysia achieves surprise", "Malaysia fails to achieve surprise"],
+  "Singapore achieves surprise": ["Singapore achieves surprise", "Singapore fails to achieve surprise"],
+  "Water and food imports to Singapore cut": ["Malaysia cuts the water pipeline", "Johor water keeps flowing"],
+  "Monsoon weather limits air operations": ["monsoon weather grounds aircraft", "the weather is clear for flying"],
+  "Outside power arms Malaysia mid-war": ["an outside power arms Malaysia", "no outside power arms Malaysia"],
+  "Outside power arms Singapore mid-war": ["an outside power arms Singapore", "no outside power arms Singapore"],
+};
+const PARAM_LABEL = {
+  strength: "active troop strength", reserves: "reservist pool", quality: "equipment quality", training: "training & leadership",
+  c2: "command, control & surveillance", air: "air power", naval: "naval power", morale: "starting morale",
+  morale_sensitivity: "casualty sensitivity", logistics: "logistics capacity", terrain_defense: "home-ground bonus",
+  depth: "strategic depth", mobilization_rate: "mobilisation speed", supply_range: "supply reach",
+  water_self: "water self-sufficiency", water_stock: "water reserves", food_self: "food self-sufficiency", food_stock: "food stockpile",
+  fuel_self: "fuel self-sufficiency", fuel_stock: "fuel reserves", pincer: "pincer aggressiveness", retreat: "willingness to retreat", siege: "storming pockets", breakout: "breakout attempts", trade_dep: "trade dependence", econ_tol: "economic pain tolerance",
+};
+const GLOBAL_LABEL = { advance_rate: ["the war moves fast", "the war moves slowly"], air_weight: ["air power counts for more", "air power counts for less"] };
+
+const PRESETS = [
+  ["Baseline (public estimates)", {}],
+  ["Malaysia strikes first", { ev_mysurprise: 100, ev_sgsurprise: 0 }],
+  ["Singapore strikes first", { ev_sgsurprise: 100, ev_mysurprise: 0 }],
+  ["Fight to the finish", { ev_ceasefire: 0 }],
+  ["Slow Singapore call-up", { "A.mobilization_delay": 5 }],
+  ["Malaysia's rapid thrust vs Singapore's forward defence", { "A.strategy": 1, "B.strategy": 1 }],
+  ["Malaysia modernises its air force", { "B.aircraft": 56, "B.air_ready": 75, "B.c2": 1.1 }],
+];
+
+const DEFAULTS = {};
+SIDE_KNOBS.forEach(([, ks]) => ks.forEach((k) => { DEFAULTS["A." + k[0]] = k[6]; DEFAULTS["B." + k[0]] = k[7]; }));
+EVENT_KNOBS.forEach((k) => { DEFAULTS[k[0]] = k[6]; });
+DEFAULTS["A.strategy"] = 0; DEFAULTS["B.strategy"] = 0;
+let state = { ...DEFAULTS };
+let runsN = 500, seed = 20261118;
+try { const s = JSON.parse(localStorage.getItem("sgmy-knobs-v5") || "null"); if (s) state = { ...DEFAULTS, ...s.state }; if (s && s.runs) runsN = s.runs; } catch (e) {}
+
+const fmt = (v, f) => {
+  if (f === "k") return v + "k";
+  if (f === "d") return v + (v === 1 ? " day" : " days");
+  if (f === "x") return (+v).toFixed(2);
+  if (f === "i" || f === "n") return String(v);
+  if (f === "%") return v + "%";
+  if (f === "±%") return "±" + v + "%";
+  if (f === "km") return v + " km";
+  if (f === "day") return "day " + v;
+  return String(v);
+};
+
+function knobInput(key, min, max, step, f, cls, label, src) {
+  const id = "k_" + key.replace(/\./g, "_");
+  const def = `<small class="src">Default ${fmt(DEFAULTS[key], f)}${src ? ": " + src : ""}</small>`;
+  return `<div class="knob ${cls}"><input type="range" id="${id}" data-key="${key}" data-f="${f}" min="${min}" max="${max}" step="${step}" value="${state[key]}" aria-label="${label}"><output for="${id}" id="o_${id}">${fmt(state[key], f)}</output>${def}</div>`;
+}
+function buildKnobs() {
+  let h = `<div class="group"><h3>Strategy</h3><div class="strat">`;
+  for (const [side, nm] of [["A", "Singapore"], ["B", "Malaysia"]]) {
+    h += `<div class="scol ${side === "A" ? "sg" : "my"}" role="radiogroup" aria-label="${nm} strategy"><span class="sname">${nm}</span>`;
+    STRATEGIES[side].forEach((st, i) => { h += `<button type="button" class="schip" role="radio" data-side="${side}" data-i="${i}" aria-checked="false">${st.name}</button>`; });
+    h += `<p class="sdesc" id="sdesc${side}"></p></div>`;
+  }
+  h += `</div></div>`;
+  SIDE_KNOBS.forEach(([grp, ks], gi) => {
+    h += `<div class="group"><h3>${grp}</h3>`;
+    if (gi === 0) h += `<div class="colhead"><span></span><span class="sg">Singapore</span><span class="my">Malaysia</span></div>`;
+    ks.forEach(([p, lab, help, mn, mx, st, , , f, kind, srcA, srcB]) => {
+      const badge = kind === "data" ? `<span class="badge data">Count</span>` : `<span class="badge est">Estimate</span>`;
+      h += `<div class="row"><div class="lab"><b>${lab} ${badge}</b><small>${help}</small></div>${knobInput("A." + p, mn, mx, st, f, "sg", "Singapore " + lab, srcA)}${knobInput("B." + p, mn, mx, st, f, "my", "Malaysia " + lab, srcB)}</div>`;
+    });
+    h += `</div>`;
+  });
+  h += `<div class="group"><h3>Circumstances <span class="badge est">Estimates</span></h3>`;
+  EVENT_KNOBS.forEach(([k, lab, help, mn, mx, st, , f]) => {
+    h += `<div class="row single"><div class="lab"><b>${lab}</b><small>${help}</small></div>${knobInput(k, mn, mx, st, f, "", lab)}</div>`;
+  });
+  h += `</div>`;
+  const el = document.getElementById("knobs");
+  el.innerHTML = h;
+  el.style.display = "grid"; el.style.gap = "16px";
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest(".schip"); if (!b) return;
+    state[b.dataset.side + ".strategy"] = +b.dataset.i;
+    syncOutputs(); markPreset(); schedule(0);
+  });
+  el.addEventListener("input", (e) => {
+    const t = e.target; if (!t.dataset.key) return;
+    state[t.dataset.key] = +t.value;
+    syncOutputs(); markPreset(); schedule();
+  });
+}
+function syncOutputs() {
+  document.querySelectorAll(".schip").forEach((b) => b.setAttribute("aria-checked", String(state[b.dataset.side + ".strategy"] === +b.dataset.i)));
+  for (const side of ["A", "B"]) { const d = document.getElementById("sdesc" + side); if (d) d.textContent = STRATEGIES[side][state[side + ".strategy"] || 0].desc; }
+  document.querySelectorAll("#knobs input[type=range]").forEach((inp) => {
+    const k = inp.dataset.key;
+    if (+inp.value !== state[k]) inp.value = state[k];
+    const o = document.getElementById("o_" + inp.id);
+    o.textContent = fmt(state[k], inp.dataset.f);
+    o.classList.toggle("changed", state[k] !== DEFAULTS[k]);
+  });
+}
+function buildPresets() {
+  const el = document.getElementById("presets");
+  el.innerHTML = PRESETS.map(([n], i) => `<button type="button" class="chip" data-i="${i}" aria-pressed="false">${n}</button>`).join("");
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state = { ...DEFAULTS, ...PRESETS[+b.dataset.i][1] };
+    syncOutputs(); markPreset(); schedule(0);
+  });
+}
+function markPreset() {
+  document.querySelectorAll("#presets .chip").forEach((b) => {
+    const target = { ...DEFAULTS, ...PRESETS[+b.dataset.i][1] };
+    b.setAttribute("aria-pressed", String(Object.keys(DEFAULTS).every((k) => target[k] === state[k])));
+  });
+}
+function buildRuns() {
+  const el = document.getElementById("runs");
+  el.innerHTML = [200, 500, 1000].map((n) => `<button type="button" data-n="${n}" aria-pressed="${n === runsN}">${n}</button>`).join("");
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    runsN = +b.dataset.n;
+    el.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(+x.dataset.n === runsN)));
+    schedule(0);
+  });
+}
+
+// Build an engine scenario from the knob state.
+function buildScenario(st) {
+  const sc = JSON.parse(JSON.stringify(BASE));
+  const u = st.uncertainty / 100;
+  const spread = (v) => (u > 0 && v > 0 ? [v * (1 - u), v, v * (1 + u)] : v);
+  for (const side of ["A", "B"]) {
+    const k = (p) => st[side + "." + p];
+    const derived = {
+      strength: k("active") * 0.75,                       // fighting troops on day one
+      reserves: k("reservists") * k("reserve_ready") / 100,
+      air: k("aircraft") * k("air_ready") / 100,
+      naval: 5 * k("frigates") + 4 * k("subs") + 2 * k("corvettes"),
+      quality: k("quality"), training: k("training"), c2: k("c2"),
+      morale: k("morale") / 100, morale_sensitivity: k("morale_sensitivity"), logistics: k("logistics") / 100,
+      terrain_defense: k("terrain_defense"), depth: k("depth") / 10,
+      water_self: k("water_self") / 100, water_stock: k("water_stock"), food_self: k("food_self") / 100, food_stock: k("food_stock"),
+      fuel_self: k("fuel_self") / 100, fuel_stock: k("fuel_stock"), trade_dep: k("trade_dep"), econ_tol: k("econ_tol"),
+    };
+    for (const [p, v] of Object.entries(derived)) sc.sides[side][p] = spread(v);
+    sc.sides[side].mobilization_delay = k("mobilization_delay");
+    sc.sides[side].remote_share = k("remote_share") / 100;
+    sc.sides[side].remote_delay = k("remote_delay");
+    sc.sides[side].remote_name = side === "A" ? "overseas training bases" : "Sabah and Sarawak";
+    for (const op of ["op_raid", "op_airborne", "op_amphib", "op_sabotage"]) sc.sides[side][op] = k(op) / 100;
+    sc.sides[side].pincer = k("pincer") / 100; sc.sides[side].retreat = k("retreat") / 100;
+    sc.sides[side].siege = k("siege") / 100; sc.sides[side].breakout = k("breakout") / 100;
+  }
+  for (const side of ["A", "B"]) {
+    const strat = STRATEGIES[side][st[side + ".strategy"] || 0];
+    sc.sides[side].posture = strat.posture;
+    if (strat.tempo) sc.sides[side].tempo = strat.tempo;
+    if (strat.mods.length) sc.events.push({ name: "Strategy: " + strat.name, prob: 1,
+      effects: strat.mods.map(([sd, param, mult, from, to, add]) => (add !== undefined ? { side: sd, param, add, from_turn: from ?? 0, to_turn: to ?? 1e9 } : { side: sd, param, mult, from_turn: from ?? 0, to_turn: to ?? 1e9 })) });
+  }
+  sc.globals.max_turns = st.max_turns;
+  // modern high-intensity war: drones and precision fires make fronts slow and attritional (Ukraine-style),
+  // so advances are a few hundred metres to ~1 km a day and morale wears down over months, not days
+  Object.assign(sc.globals, { advance_rate: [0.04, 0.06, 0.09], lethality: 0.006, morale_rate: 0.25, stall: 0.25, cohesion: 2 });
+  sc.sectors = SECTORS;
+  sc.resources = true;
+  sc.events.forEach((ev) => { if (ev.name === "Water and food imports to Singapore cut") ev.effects = [{ side: "A", param: "water_cut", add: 1, from_turn: 3 }]; });
+  sc.events.forEach((ev) => {
+    const key = Object.keys(EVENT_NAME).find((k) => EVENT_NAME[k] === ev.name);
+    if (key) ev.prob = st[key] / 100;
+    if (ev.ceasefire_turn) { const d = st.ceasefire_day; ev.ceasefire_turn = [Math.max(2, Math.round(d * 0.5)), d, Math.round(d * 2.1)]; }
+  });
+  return sc;
+}
+
+// ---------- rendering
+const pct = (x) => Math.round(x * 100) + "%";
+let baseline = null;
+
+function describeDriver(d, w) {
+  const dw = d["d" + w], hiP = d["hi" + w], loP = d["lo" + w];
+  const good = dw > 0;
+  let text;
+  if (d.key.startsWith("event:")) {
+    const nm = d.key.slice(6);
+    const ph = EVENT_PHRASE[nm] || [`a ${nm} is attempted`, `no ${nm} is attempted`];
+    text = good ? ph[0] : ph[1];
+  } else {
+    const [side, p] = d.key.split(".");
+    if (side === "globals") text = GLOBAL_LABEL[p] ? GLOBAL_LABEL[p][good ? 0 : 1] : `${p} is ${good ? "high" : "low"}`;
+    else text = `${side === "A" ? "Singapore's" : "Malaysia's"} ${PARAM_LABEL[p] || p} is ${good ? "high" : "low"}`;
+  }
+  const yes = good ? hiP : loP, no = good ? loP : hiP;
+  return { text: text[0].toUpperCase() + text.slice(1), yes, no, mag: Math.abs(dw) };
+}
+function renderDrivers(a, w, el) {
+  const ds = a.drivers.filter((d) => d["sig" + w])
+    .map((d) => describeDriver(d, w)).sort((x, y) => y.mag - x.mag).slice(0, 5);
+  if (!ds.length) { el.innerHTML = `<p class="empty">Nothing clearly moves the odds at this run count. Try more runs or more uncertainty.</p>`; return; }
+  const max = Math.max(...ds.map((d) => d.yes), 0.01);
+  el.innerHTML = ds.map((d) => `<div class="drv"><div class="t">${d.text}</div><div class="m"><div class="pair"><div class="b hi" style="width:${(d.yes / max) * 100}%"></div><div class="b lo" style="width:${(d.no / max) * 100}%"></div></div><span class="num">${pct(d.yes)} vs ${pct(d.no)}</span></div></div>`).join("");
+}
+function reasonText(why, loser) {
+  if (why === "core territory overrun") return `${loser}'s core territory falls`;
+  if (why === "army broken by losses") return `${loser}'s army is broken`;
+  if (why.startsWith("surrender: ")) return `${loser} surrenders as its ${why.slice(11).replace(" runs out", " runs out").replace(" collapses", " collapses")}`;
+  return `${loser}'s will to fight collapses`;
+}
+function renderEnds(a) {
+  const nm = { A: "Singapore", B: "Malaysia" };
+  const col = { A: "var(--sg)", B: "var(--my)", stalemate: "var(--draw)" };
+  const items = Object.entries(a.reasons).filter(([, c]) => c / a.n >= 0.005).sort((x, y) => y[1] - x[1]).map(([k, c]) => {
+    const [o, why] = k.split("|");
+    let t;
+    if (o === "stalemate") t = why === "ceasefire imposed" ? "Ceasefire with no winner" : "Still undecided at the time limit";
+    else {
+      const loser = o === "A" ? "Malaysia" : "Singapore";
+      t = `${nm[o]} wins: ${reasonText(why, loser)}`;
+    }
+    return `<li><i style="--c:${col[o]}"></i><span>${t}</span><span class="n">${pct(c / a.n)}</span></li>`;
+  });
+  document.getElementById("ends").innerHTML = items.join("");
+}
+function svgAxes(w, h, m, xmax, ymin, ymax, xlab, yfmt, yticks) {
+  let s = "";
+  const X = (x) => m.l + (x / xmax) * (w - m.l - m.r), Y = (y) => h - m.b - ((y - ymin) / (ymax - ymin)) * (h - m.t - m.b);
+  yticks.forEach((y) => { s += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--rule)" stroke-width="1"/><text x="${m.l - 5}" y="${Y(y) + 3.5}" text-anchor="end">${yfmt(y)}</text>`; });
+  const step = xmax > 60 ? 20 : xmax > 30 ? 10 : 5;
+  for (let x = 0; x <= xmax; x += step) s += `<text x="${X(x)}" y="${h - m.b + 13}" text-anchor="middle">${x}</text>`;
+  s += `<text x="${(m.l + w - m.r) / 2}" y="${h - 2}" text-anchor="middle">${xlab}</text>`;
+  return { s, X, Y };
+}
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); for (const k of [1, 2, 2.5, 5, 10]) if (k * p >= v) return k * p; return 10 * p; }
+function renderHist(runs, maxT) {
+  const w = 320, h = 170, m = { l: 34, r: 8, t: 8, b: 30 };
+  const nb = Math.min(30, maxT), bw = maxT / nb;
+  const bins = Array.from({ length: nb }, () => ({ A: 0, B: 0, stalemate: 0 }));
+  runs.forEach((r) => { bins[Math.min(nb - 1, Math.floor((r.turns - 0.0001) / bw))][r.outcome]++; });
+  const top = niceMax(Math.max(...bins.map((b) => b.A + b.B + b.stalemate)));
+  const ax = svgAxes(w, h, m, maxT, 0, top, "war length (days)", (y) => Math.round((y / runs.length) * 100) + "%", [0, top / 2, top]);
+  let s = ax.s;
+  const pw = (w - m.l - m.r) / nb;
+  bins.forEach((b, i) => {
+    let y0 = 0;
+    [["A", "var(--sg)"], ["B", "var(--my)"], ["stalemate", "var(--draw)"]].forEach(([o, c]) => {
+      if (!b[o]) return;
+      const y1 = y0 + b[o];
+      s += `<rect x="${m.l + i * pw + 1}" y="${ax.Y(y1)}" width="${Math.max(pw - 2, 1)}" height="${Math.max(ax.Y(y0) - ax.Y(y1) - 1, 0.5)}" fill="${c}"/>`;
+      y0 = y1;
+    });
+  });
+  document.getElementById("hist").innerHTML = s;
+}
+function renderFront(runs, maxT, st) {
+  const w = 320, h = 170, m = { l: 34, r: 8, t: 8, b: 30 };
+  const sample = runs.slice(0, 70);
+  let lo = 0, hi = 0;
+  sample.forEach((r) => r.trF.forEach((f) => { lo = Math.min(lo, f); hi = Math.max(hi, f); }));
+  lo = Math.min(lo, -0.5); hi = Math.max(hi, 0.5);
+  const tick = niceMax((hi - lo) / 3);
+  const ticks = [];
+  for (let y = Math.ceil(lo / tick) * tick; y <= hi; y += tick) ticks.push(+y.toFixed(6));
+  const ax = svgAxes(w, h, m, maxT, lo, hi, "day   (+ = inside Malaysia, km)", (y) => Math.round(y * 10), ticks);
+  let s = ax.s + `<line x1="${m.l}" x2="${w - m.r}" y1="${ax.Y(0)}" y2="${ax.Y(0)}" stroke="var(--ink-3)" stroke-width="1"/>`;
+  const col = { A: "var(--sg)", B: "var(--my)", stalemate: "var(--draw)" };
+  sample.forEach((r) => {
+    const pts = r.trF.map((f, i) => `${ax.X(i).toFixed(1)},${ax.Y(f).toFixed(1)}`).join(" ");
+    s += `<polyline points="${pts}" fill="none" stroke="${col[r.outcome]}" stroke-width="1" stroke-opacity="0.55"/>`;
+  });
+  document.getElementById("front").innerHTML = s;
+}
+function verdictText(a) {
+  const { A, B, stalemate } = a.p;
+  const lead = A > B ? ["Singapore", A, "Malaysia", B] : ["Malaysia", B, "Singapore", A];
+  const ratio = lead[3] > 0 ? lead[1] / lead[3] : Infinity;
+  let s;
+  if (Math.abs(A - B) < 0.05) s = `<strong>A coin toss.</strong> Singapore and Malaysia win about equally often (${pct(A)} vs ${pct(B)}).`;
+  else if (ratio > 3) s = `<strong>${lead[0]} is the clear favourite</strong>, winning ${pct(lead[1])} of wars to ${lead[2]}'s ${pct(lead[3])}.`;
+  else s = `<strong>${lead[0]} has the edge</strong>, winning ${pct(lead[1])} of wars to ${lead[2]}'s ${pct(lead[3])}.`;
+  if (stalemate > 0.25) s += ` ${pct(stalemate)} end with no winner, usually because outside powers impose a ceasefire first.`;
+  const mt = a.medTurns;
+  const bits = [];
+  if (mt.A !== null && A > 0.03) bits.push(`Singapore's wins take about ${mt.A} days`);
+  if (mt.B !== null && B > 0.03) bits.push(`Malaysia's about ${mt.B}`);
+  if (bits.length) s += ` ${bits.join(", ")}.`;
+  return s;
+}
+function renderDelta(id, now, base) {
+  const el = document.getElementById(id);
+  if (!base) { el.textContent = ""; return; }
+  const d = Math.round((now - base) * 100);
+  el.textContent = d === 0 ? "same as baseline" : `${d > 0 ? "+" : "−"}${Math.abs(d)} pts vs baseline`;
+}
+
+// ---------- map replay
+const MAP = { lon0: 103.2, lon1: 104.2, lat0: 1.2, lat1: 2.25, W: 600, H: 630, strait: 1.46 };
+const mx = (lon) => ((lon - MAP.lon0) / (MAP.lon1 - MAP.lon0)) * MAP.W;
+const my = (lat) => ((MAP.lat1 - lat) / (MAP.lat1 - MAP.lat0)) * MAP.H;
+const KM_DEG = 1 / 111;
+const frontLat = (f) => MAP.strait + f * 10 * KM_DEG;   // engine distance unit is 10 km
+const poly = (pts) => pts.map(([lo, la]) => `${mx(lo).toFixed(1)},${my(la).toFixed(1)}`).join(" ");
+const JOHOR = [[103.2,2.25],[103.2,1.68],[103.27,1.62],[103.33,1.55],[103.39,1.49],[103.43,1.42],[103.47,1.34],[103.51,1.27],[103.54,1.29],[103.57,1.33],[103.6,1.37],[103.63,1.40],[103.66,1.43],[103.70,1.455],[103.74,1.465],[103.77,1.465],[103.80,1.475],[103.83,1.48],[103.86,1.47],[103.90,1.455],[103.94,1.45],[103.98,1.445],[104.02,1.43],[104.06,1.40],[104.09,1.37],[104.13,1.37],[104.2,1.40],[104.2,2.25]];
+const SGI = [[103.64,1.33],[103.65,1.36],[103.68,1.39],[103.70,1.42],[103.74,1.44],[103.77,1.45],[103.80,1.455],[103.83,1.46],[103.86,1.44],[103.88,1.42],[103.91,1.41],[103.95,1.40],[103.99,1.39],[104.03,1.38],[104.04,1.36],[104.00,1.33],[103.96,1.31],[103.92,1.30],[103.88,1.29],[103.85,1.27],[103.82,1.265],[103.78,1.28],[103.74,1.29],[103.70,1.30],[103.66,1.31]];
+const PLACES = [
+  ["Johor Bahru", 103.76, 1.49, "MY"], ["Senai", 103.67, 1.60, "MY"], ["Kulai", 103.60, 1.66, "MY"],
+  ["Kota Tinggi", 103.90, 1.73, "MY"], ["Pontian", 103.39, 1.49, "MY"], ["Pasir Gudang", 103.91, 1.47, "MY"],
+  ["Simpang Renggam", 103.31, 1.83, "MY"], ["Ayer Hitam", 103.215, 1.92, "MY"], ["Kluang", 103.32, 2.03, "MY"],
+  ["Woodlands", 103.79, 1.437, "SG"], ["Jurong", 103.71, 1.335, "SG"],
+  ["Ang Mo Kio", 103.85, 1.37, "SG"], ["City centre", 103.85, 1.287, "SG"],
+  ["Changi", 103.99, 1.355, "SG"],
+];
+const HILLS = [["Gunung Pulai 654 m", 103.545, 1.605, 26], ["Gunung Panti 510 m", 103.885, 1.84, 22], ["Bukit Timah 163 m", 103.776, 1.353, 8]];
+const ROAD = [[103.765,1.47],[103.70,1.55],[103.66,1.61],[103.60,1.66],[103.45,1.76],[103.31,1.84],[103.215,1.92]];
+
+// The front at a given longitude: interpolate between sector centres, plus a little ripple so it reads as a line on the ground.
+const SECT_C = SECTORS.map((x) => (x.lon[0] + x.lon[1]) / 2);
+function sectorValueAt(fs, lo) {
+  if (lo <= SECT_C[0]) return fs[0];
+  for (let i = 0; i < SECT_C.length - 1; i++) {
+    if (lo <= SECT_C[i + 1]) { const u = (lo - SECT_C[i]) / (SECT_C[i + 1] - SECT_C[i]); const e = u * u * (3 - 2 * u); return fs[i] * (1 - e) + fs[i + 1] * e; }
+  }
+  return fs[fs.length - 1];
+}
+function frontPath(fs, day) {
+  const pts = [];
+  for (let lo = MAP.lon0; lo <= MAP.lon1 + 1e-9; lo += 0.0125) {
+    const lat = frontLat(sectorValueAt(fs, lo));
+    pts.push([lo, lat + 0.005 * Math.sin(lo * 31 + day * 0.7) + 0.003 * Math.sin(lo * 73 - day * 0.4)]);
+  }
+  return pts;
+}
+
+let replay = { run: null, day: 0, timer: null, label: "" };
+
+function drawMapStatic() {
+  const svg = document.getElementById("map");
+  let s = `<defs><clipPath id="jclip"><path d="${GEO.my}"/></clipPath><clipPath id="sclip"><path d="${GEO.sg}"/></clipPath>
+    <radialGradient id="hill"><stop offset="0" stop-color="var(--hill)" stop-opacity=".9"/><stop offset="1" stop-color="var(--hill)" stop-opacity="0"/></radialGradient>
+    <pattern id="urbanpat" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="var(--urban)"/><line x1="0" y1="0" x2="0" y2="4" stroke="var(--coast)" stroke-width="0.6" stroke-opacity=".5"/></pattern>
+    <marker id="chev" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9" fill="none" stroke="context-stroke" stroke-width="2"/></marker></defs>`;
+  s += `<rect x="0" y="0" width="${MAP.W}" height="${MAP.H}" fill="var(--water)"/>`;
+  s += `<path d="${GEO.my}" fill="var(--land)" stroke="var(--coast)" stroke-width="0.8"/>`;
+  s += `<path d="${GEO.sg}" fill="var(--land)" stroke="var(--coast)" stroke-width="0.8"/>`;
+  HILLS.forEach(([n, lo, la, r]) => { s += `<ellipse cx="${mx(lo)}" cy="${my(la)}" rx="${r}" ry="${r * 0.8}" fill="url(#hill)"/>`; });
+  s += `<path d="${GEO.urban}" fill="url(#urbanpat)" stroke="none"/>`;
+  s += `<g id="zonesJ" clip-path="url(#jclip)"></g><g id="zonesS" clip-path="url(#sclip)"></g>`;
+  s += `<g id="trail"></g>`;
+  GEO.roads.forEach(([t, d]) => { s += `<path d="${d}" fill="none" stroke="var(--road)" stroke-width="${t === "Major Highway" ? 1.8 : 1}" stroke-linecap="round"/>`; });
+  GEO.rail.forEach((d) => { s += `<path d="${d}" fill="none" stroke="var(--ink-3)" stroke-width="0.8" stroke-dasharray="3 2"/>`; });
+  HILLS.forEach(([n, lo, la]) => { s += `<path d="M${mx(lo) - 4},${my(la) + 3} L${mx(lo)},${my(la) - 4} L${mx(lo) + 4},${my(la) + 3}Z" fill="var(--ink-3)"/><text class="hilltxt" x="${mx(lo)}" y="${my(la) + 14}" text-anchor="middle">${n}</text>`; });
+  s += `<g id="cores"></g>`;
+  PLACES.forEach(([n, lo, la]) => {
+    const anchor = lo > 104.0 ? "end" : "start";
+    s += `<circle class="dot" cx="${mx(lo)}" cy="${my(la)}" r="2.5"/><text class="place" x="${mx(lo) + (anchor === "end" ? -5 : 5)}" y="${my(la) + 4}" text-anchor="${anchor}">${n}</text>`;
+  });
+  s += `<text class="place big" x="${mx(103.62)}" y="${my(1.97)}">Johor (Malaysia)</text>`;
+  s += `<text class="place big" x="${mx(103.72)}" y="${my(1.235)}">Singapore</text>`;
+  s += `<text class="sea" x="${mx(103.235)}" y="${my(1.30)}">Strait of Malacca</text>`;
+  s += `<text class="sea" x="${mx(103.88)}" y="${my(1.225)}">Singapore Strait</text>`;
+  s += `<text class="sea" x="${mx(103.57)}" y="${my(1.415)}" transform="rotate(-38 ${mx(103.57)} ${my(1.415)})">Strait of Johor</text>`;
+  // scale bar: 20 km
+  const x0 = 430, y0 = 600, w20 = (20 * KM_DEG / (MAP.lon1 - MAP.lon0)) * MAP.W;
+  s += `<line x1="${x0}" y1="${y0}" x2="${x0 + w20}" y2="${y0}" stroke="var(--ink-2)" stroke-width="2"/><line x1="${x0}" y1="${y0 - 4}" x2="${x0}" y2="${y0 + 4}" stroke="var(--ink-2)"/><line x1="${x0 + w20}" y1="${y0 - 4}" x2="${x0 + w20}" y2="${y0 + 4}" stroke="var(--ink-2)"/><text class="lbl" x="${x0 + w20 / 2}" y="${y0 - 7}" text-anchor="middle" fill="var(--ink-2)">20 km</text>`;
+  s += `<g id="pocketg"></g><g id="frontg"></g><g id="arrowsg"></g><g id="unitsg"></g><g id="pocketlbl"></g>`;
+  svg.innerHTML = s;
+  // overview inset: Peninsular Malaysia, Singapore and East Malaysia (Sabah, Sarawak)
+  const I = INSET, ix = (lo) => ((lo - I.L0) / (I.L1 - I.L0)) * I.W, iy = (la) => ((I.A1 - la) / (I.A1 - I.A0)) * I.H;
+  let t = `<rect width="${I.W}" height="${I.H}" fill="var(--water)"/>`;
+  for (const [c, d] of Object.entries(I.paths)) t += `<path d="${d}" fill="${c === "MYS" ? "var(--myzone)" : c === "SGP" ? "var(--sg)" : "var(--land)"}" stroke="var(--coast)" stroke-width="0.4"/>`;
+  t += `<rect x="${ix(103.2)}" y="${iy(2.25)}" width="${ix(104.2) - ix(103.2)}" height="${iy(1.2) - iy(2.25)}" fill="none" stroke="var(--ink)" stroke-width="1"/>`;
+  t += `<path d="M${ix(110.3)},${iy(1.6)} Q${ix(107)},${iy(3.2)} ${ix(104.4)},${iy(1.7)}" fill="none" stroke="var(--my)" stroke-width="1.2" stroke-dasharray="3 2" marker-end="url(#chev)"/>`;
+  t += `<text x="${ix(100)}" y="${iy(6.6)}">Peninsular Malaysia</text><text x="${ix(111.5)}" y="${iy(1.0)}">Sarawak</text><text x="${ix(115.6)}" y="${iy(6.9)}">Sabah</text><text x="${ix(105.2)}" y="${iy(3.9)}">South China Sea</text>`;
+  document.getElementById("inset").innerHTML = t;
+}
+
+function drawMapDay() {
+  const r = replay.run; if (!r) return;
+  const d = replay.day, fs = r.trS[d], f = r.trF[d];
+  const fp = frontPath(fs, d);
+  const top = [[MAP.lon1, MAP.lat1 + 1], [MAP.lon0, MAP.lat1 + 1]], bot = [[MAP.lon1, MAP.lat0 - 1], [MAP.lon0, MAP.lat0 - 1]];
+  // Johor: Malaysian, except the strip Singapore has taken between the Strait and the front.
+  const strait = fp.map(([lo]) => [lo, MAP.strait]);
+  // where the front is north of the Strait, Singapore holds all of Johor south of it; elsewhere the strip has no width
+  const upper = fp.map(([lo, la]) => [lo, la]);
+  for (let q = 0; q < strait.length; q++) strait[q] = [fp[q][0], fp[q][1] > MAP.strait ? MAP.lat0 - 0.2 : fp[q][1]];
+  const sgInJohor = `<polygon points="${poly([...upper, ...strait.reverse()])}" fill="var(--sgzone)"/>`;
+  const full = (z) => `<rect x="0" y="0" width="${MAP.W}" height="${MAP.H}" fill="var(${z})"/>`;
+  document.getElementById("zonesJ").innerHTML = full("--myzone") + `<g style="mix-blend-mode:normal">${sgInJohor.replace("var(--sgzone)", "var(--land)")}${sgInJohor}</g>`;
+  // The island: Singaporean, except north of the front where Malaysia has landed.
+  document.getElementById("zonesS").innerHTML = `<polygon points="${poly([...fp, ...bot])}" fill="var(--sgzone)"/><polygon points="${poly([...fp, ...top])}" fill="var(--myzone)"/>`;
+  const coreA = frontLat(-r.depth.A), coreB = frontLat(r.depth.B);
+  let c = "";
+  if (coreB < MAP.lat1) c += `<line x1="0" x2="${MAP.W}" y1="${my(coreB)}" y2="${my(coreB)}" stroke="var(--my)" stroke-width="1.2" stroke-dasharray="6 4"/><text class="lbl" x="${MAP.W - 6}" y="${my(coreB) - 5}" text-anchor="end" fill="var(--my)">Malaysia's core (${Math.round(r.depth.B * 10)} km)</text>`;
+  else c += `<text class="lbl" x="${MAP.W - 6}" y="16" text-anchor="end" fill="var(--my)">↑ Malaysia's core ${Math.round(r.depth.B * 10)} km north</text>`;
+  c += `<line x1="0" x2="${MAP.W}" y1="${my(coreA)}" y2="${my(coreA)}" stroke="var(--sg)" stroke-width="1.2" stroke-dasharray="6 4"/><text class="lbl" x="${MAP.W - 6}" y="${my(coreA) + 13}" text-anchor="end" fill="var(--sg)">Singapore's core (${Math.round(r.depth.A * 10)} km)</text>`;
+  document.getElementById("cores").innerHTML = c;
+  // trail of earlier front lines (one a week back, up to four weeks)
+  let tr = "";
+  for (let k = 1; k <= 4; k++) {
+    const dd = d - k * 7; if (dd < 0) break;
+    tr += `<polyline points="${poly(frontPath(r.trS[dd], dd))}" fill="none" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3" stroke-opacity="${0.6 - k * 0.12}"/>`;
+  }
+  document.getElementById("trail").innerHTML = tr;
+  const prev = r.trS[Math.max(0, d - 3)];
+  let arrows = "";
+  const sc = sceneAt(r, d);
+  drawForces2D(sc); setScene(sc);
+  if (view3d.on) update3D(r, d, sc);
+  // landings behind the lines
+  let marks = "";
+  for (const L of r.landings || []) {
+    const end = L.end ?? r.turns;
+    if (d < L.day || d > end) continue;
+    const x = mx(SECT_C[L.sector] + (L.side === "A" ? -0.02 : 0.02)), y = my(frontLat(L.f));
+    const col = L.side === "A" ? "var(--sg)" : "var(--my)";
+    const lbl = L.kind === "airborne" ? "Airborne" : "Landing";
+    if (L.fate === "failed" || (L.fate === "lost" && d === end)) {
+      marks += `<g><path d="M${x - 6},${y - 6} L${x + 6},${y + 6} M${x + 6},${y - 6} L${x - 6},${y + 6}" stroke="${col}" stroke-width="2.5"/><text class="lbl" x="${x + 9}" y="${y + 4}" fill="${col}">${lbl} lost</text></g>`;
+    } else {
+      marks += `<g><circle cx="${x}" cy="${y}" r="7" fill="var(--panel)" stroke="${col}" stroke-width="2"/><path d="M${x - 4},${y + 1} Q${x},${y - 6} ${x + 4},${y + 1} M${x},${y - 2} L${x},${y + 4}" fill="none" stroke="${col}" stroke-width="1.5"/><text class="lbl" x="${x + 10}" y="${y + 4}" fill="${col}">${lbl}</text></g>`;
+    }
+  }
+  const lead = f >= 0 ? "var(--sg)" : "var(--my)";
+  document.getElementById("frontg").innerHTML = `<polyline points="${poly(fp)}" fill="none" stroke="var(--panel)" stroke-width="5" stroke-linejoin="round"/><polyline points="${poly(fp)}" fill="none" stroke="${lead}" stroke-width="2.5" stroke-linejoin="round"/>${arrows}${marks}`;
+  document.getElementById("hudDay").textContent = "Day " + d;
+  const km = Math.abs(f * 10);
+  document.getElementById("hudFront").textContent = km < 0.5 ? "Front on the Strait (average)" : f > 0 ? `Front on average ${km.toFixed(0)} km into Johor` : `Front on average ${km.toFixed(0)} km into Singapore`;
+  document.getElementById("dayOf").textContent = `day ${d} of ${r.turns}`;
+  document.getElementById("day").value = d;
+  const res = r.trRes[d], res0 = r.trRes[0];
+  for (const [k, el, S, M, L] of [["A", "stA", r.trA, r.trMA, r.trLA], ["B", "stB", r.trB, r.trMB, r.trLB]]) {
+    const rs = res[k], r0 = res0[k];
+    const days = (x) => (x >= 1 ? `${Math.round(x)} days` : "empty");
+    document.getElementById(el).innerHTML =
+      meter("Combat strength", `${S[d].toFixed(0)}k`, S[d] / Math.max(...S)) +
+      meter("Morale", `${Math.round(M[d] * 100)}%`, M[d]) +
+      meter("Combat power lost", `${L[d].toFixed(1)}k`, L[d] / Math.max(1, ...r.trLA, ...r.trLB)) +
+      meter("Water reserve", days(rs.water), r0.water ? rs.water / r0.water : 1) +
+      meter("Food stockpile", days(rs.food), r0.food ? rs.food / r0.food : 1) +
+      meter("Fuel reserve", days(rs.fuel), r0.fuel ? rs.fuel / r0.fuel : 1) +
+      meter("Economy lost (of pain limit)", `${rs.econ.toFixed(1)}% / ${Math.round(r.econTol[k])}%`, rs.econ / r.econTol[k]);
+  }
+  document.getElementById("sectors").innerHTML = SECTORS.map((sx, i) => {
+    const v = fs[i] * 10, mv = fs[i] - prev[i];
+    const where = Math.abs(v) < 0.5 ? "on the Strait" : v > 0 ? `${v.toFixed(0)} km into Johor` : `${(-v).toFixed(0)} km into Singapore`;
+    const arrow = Math.abs(mv) < 0.02 ? "·" : mv > 0 ? "▲" : "▼";
+    return `<li><span class="nm">${sx.name}</span><span class="v" style="color:${Math.abs(v) < 0.5 ? "var(--ink-2)" : v > 0 ? "var(--sg)" : "var(--my)"}">${arrow} ${where}</span></li>`;
+  }).join("");
+  document.querySelectorAll("#log li").forEach((li) => {
+    const ld = +li.dataset.day;
+    li.classList.toggle("future", ld > d);
+    li.classList.toggle("now", ld === d);
+  });
+  const now = [...document.querySelectorAll("#log li:not(.future)")].pop();
+  const logEl = document.getElementById("log");
+  if (now) {
+    const topY = now.offsetTop - logEl.offsetTop, bottom = topY + now.offsetHeight;
+    if (bottom > logEl.scrollTop + logEl.clientHeight) logEl.scrollTop = bottom - logEl.clientHeight;
+    else if (topY < logEl.scrollTop) logEl.scrollTop = topY;
+  }
+}
+// ---------- Moving forces: arrows, unit markers and pockets, built from the simulated sector data ----------
+const UNIT_K = 5;            // one marker per ~5,000 frontline troops
+const DIRS = { A: 1, B: -1 }; // + is Singapore pushing north into Johor
+const landPaths = { my: new Path2D(GEO.my), sg: new Path2D(GEO.sg) };
+const hitCtx = document.createElement("canvas").getContext("2d");
+const onLand = (x, y) => hitCtx.isPointInPath(landPaths.my, x, y) || hitCtx.isPointInPath(landPaths.sg, x, y);
+const ANCHOR = { A: [mx(103.83), my(1.365)], B: [mx(103.72), my(1.66)] };
+function landed(k, x, y) {
+  // a marker that would sit in the sea moves up to the nearest shore toward the front, or else back toward its own heartland
+  if (onLand(x, y)) return [x, y];
+  for (let s = 2; s <= 44; s += 2) { const yy = y + (k === "A" ? -s : s); if (onLand(x, yy)) return [x, yy]; }
+  const [ax, ay] = ANCHOR[k];
+  for (let s = 0; s < 30 && !onLand(x, y); s++) { x += (ax - x) * 0.14; y += (ay - y) * 0.14; }
+  return [x, y];
+}
+const ptAt = (fs, lo, fOff) => [mx(lo), my(frontLat(sectorValueAt(fs, lo) + fOff))];
+function quadPts(p0, c, p1, n = 18) {
+  const out = [];
+  for (let q = 0; q <= n; q++) { const u = q / n, a = (1 - u) * (1 - u), b = 2 * u * (1 - u), e = u * u; out.push([a * p0[0] + b * c[0] + e * p1[0], a * p0[1] + b * c[1] + e * p1[1]]); }
+  return out;
+}
+function sceneAt(r, d) {
+  const fs = r.trS[d], back = r.trS[Math.max(0, d - 5)];
+  const U = r.trU ? r.trU[d] : { A: SECTORS.map(() => r.trA[d] / SECTORS.length), B: SECTORS.map(() => r.trB[d] / SECTORS.length) };
+  const maxU = Math.max(1, ...U.A, ...U.B);
+  const pocketsNow = (r.trPocket && r.trPocket[d]) || [];
+  const pocketed = new Set(pocketsNow.filter((p) => p[2] > 0.15).map(([k, i]) => k + i));
+  const arrows = [], units = [], pockets = [];
+  const sect = (i) => SECTORS[i];
+  for (const k of ["A", "B"]) {
+    const dir = DIRS[k], e = k === "A" ? "B" : "A";
+    const adv = fs.map((f) => dir * f);
+    const moving = fs.map((f, i) => dir * (f - back[i]));
+    const hooks = [];
+    // sectors whose units are one arm of a pincer round a pocket the enemy is caught in
+    const arms = pocketsNow.filter(([kk, , pp]) => kk === e && pp > 0.02);
+    SECTORS.forEach((sx, i) => { hooks[i] = arms.filter(([, j]) => j === i - 1 || j === i + 1).map(([, j]) => j); });
+    // plain arrows: one short thrust per sector that gained ground this week (pincer arms get their own arrows below)
+    SECTORS.forEach((sx, i) => {
+      if (moving[i] < 0.04 || pocketed.has(k + i) || hooks[i].length) return;
+      const w = 2 + 5 * Math.min(1, U[k][i] / maxU), lo = SECT_C[i];
+      const p0 = ptAt(fs, lo, -dir * 1.0), p1 = ptAt(fs, lo, dir * 0.12);
+      const sway = 8 * Math.sin(d * 0.13 + i * 2);
+      arrows.push({ side: k, w, pts: quadPts(p0, [(p0[0] + p1[0]) / 2 + sway, (p0[1] + p1[1]) / 2], p1), hook: false });
+    });
+    // unit markers: the side's whole frontline force, shared out by where it is concentrated today
+    const total = Math.max(1, Math.min(30, Math.round(U[k].reduce((a, b) => a + b, 0) / UNIT_K)));
+    const share = U[k].map((x) => x / Math.max(1e-9, U[k].reduce((a, b) => a + b, 0)) * total);
+    const cnt = share.map(Math.floor);
+    let rest = total - cnt.reduce((a, b) => a + b, 0);
+    share.map((x, i) => [x - Math.floor(x), i]).sort((a, b) => b[0] - a[0]).slice(0, rest).forEach(([, i]) => cnt[i]++);
+    let id = 0;
+    SECTORS.forEach((sx, i) => {
+      const m = cnt[i]; if (!m) return;
+      const [l0, l1] = sx.lon, span = l1 - l0;
+      const inPocket = pocketed.has(k + i);
+      const attacking = moving[i] >= 0.04 && !inPocket;
+      const nSpear = attacking ? Math.ceil(m * 0.6) : 0;
+      for (let q = 0; q < m; q++, id++) {
+        let lo, off, role;
+        if (inPocket) { role = "trapped"; const cols = Math.ceil(m / 2); lo = SECT_C[i] + span * 0.55 * ((q % cols) - (cols - 1) / 2) / Math.max(1, cols); off = -dir * (0.15 + 0.22 * Math.floor(q / cols)); }
+        else if (q < nSpear) {
+          // spearheads split across the sector and lean toward the flank they are wheeling into
+          role = "spear";
+          const lag = hooks[i] || [];
+          const base = l0 + span * (q + 0.5) / nSpear;
+          const lean = lag.length === 1 ? (SECT_C[lag[0]] - SECT_C[i]) * 0.35 : lag.length === 2 ? (base - SECT_C[i]) * 0.9 : 0;
+          lo = base + lean; off = -dir * 0.06;
+        } else {
+          role = attacking ? "second" : "line";
+          const nn = m - nSpear, qq = q - nSpear;
+          lo = l0 + span * (qq + 0.5) / nn;
+          off = -dir * (attacking ? 0.75 : 0.25 + 0.12 * (qq % 2));
+        }
+        const local = sectorValueAt(fs, lo);
+        const [x, y] = landed(k, mx(lo), my(frontLat(local + off)));
+        units.push({ id: k + id, side: k, x, y, role, rear: landed(k, mx(lo), my(frontLat(local + off - dir * 1.2))) });
+      }
+    });
+  }
+  // forming pockets: the encircler's front lines bend in behind the salient from both sides and the neck narrows as the pincers close
+  const frontPts = frontPath(fs, d);
+  for (const [k, i, p] of pocketsNow) {
+    if (p <= 0.02 || i < 1 || i > SECTORS.length - 2) continue;
+    const e = k === "A" ? "B" : "A", de = DIRS[e];
+    const halfW = (SECTORS[i].lon[1] - SECTORS[i].lon[0]) / 2 + 0.01;
+    const neckF = (fs[i - 1] + fs[i + 1]) / 2 + de * 0.05;
+    const gap = halfW * (1 - p);
+    const armPts = (j, sgn) => {
+      const p0 = [mx(SECT_C[j]), my(frontLat(fs[j]))], p1 = [mx(SECT_C[i] + sgn * gap), my(frontLat(neckF))];
+      return quadPts(p0, [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2 * 0.5 + p1[1] * 0.5], p1, 14);
+    };
+    const L = armPts(i - 1, -1), R = armPts(i + 1, 1);
+    // the salient: the main front between the two shoulders, closed off along the arms
+    const sal = frontPts.filter(([lo]) => lo >= SECT_C[i - 1] && lo <= SECT_C[i + 1]).map(([lo, la]) => [mx(lo), my(la)]);
+    const area = [...sal, ...R.slice().reverse().slice(0, -1).reverse(), ...L.slice().reverse()];
+    pockets.push({ side: k, sector: i, p, arms: [L, R], area, x: mx(SECT_C[i]), y: my(frontLat((fs[i] + neckF) / 2)), top: Math.min(...sal.map((q) => de > 0 ? q[1] : -q[1])) });
+    // pincer arrows ride along the arms toward the closing gap
+    const w = 2 + 5 * Math.min(1, Math.max(U[e][i - 1], U[e][i + 1]) / maxU);
+    for (const [j, sgn] of [[i - 1, -1], [i + 1, 1]]) {
+      const p0 = ptAt(fs, SECT_C[j], -de * 0.9), p1 = [mx(SECT_C[i] + sgn * gap * 0.6), my(frontLat(neckF - de * 0.05))];
+      arrows.push({ side: e, w, pts: quadPts(p0, [p0[0], p1[1]], p1), hook: true });
+    }
+  }
+  // sealed pockets: cut-off troops behind the enemy's line, until they are relieved, break out, surrender or are wiped out
+  const sealed = [], closed = [];
+  for (const h of (r.trHeld && r.trHeld[d]) || []) {
+    const [cx, cy] = landed(h.side, mx(SECT_C[h.sector]), my(frontLat(h.f)));
+    const n = Math.max(1, Math.min(6, Math.round((h.fate ? h.start * 0.5 : h.troops) / UNIT_K)));
+    const rad = 12 + 3.2 * n;
+    const loop = []; for (let q = 0; q < 28; q++) { const a = (q / 28) * Math.PI * 2, w = 1 + 0.12 * Math.sin(a * 3 + h.id * 1.7) + 0.06 * Math.sin(a * 5 + d * 0.2); loop.push([cx + Math.cos(a) * rad * w, cy + Math.sin(a) * rad * 0.85 * w]); }
+    sealed.push({ ...h, x: cx, y: cy, rad, loop });
+    const escaping = h.fate === "broke out" || h.fate === "relieved";
+    const home = landed(h.side, mx(SECT_C[h.sector]), my(frontLat(r.trS[d][h.sector] - DIRS[h.side] * 0.3)));
+    for (let q = 0; q < n; q++) {
+      const a = (q / n) * Math.PI * 2 + h.id, rr = n > 1 ? rad * 0.45 : 0;
+      const [x, y] = escaping ? [home[0] + (q - n / 2) * 9, home[1]] : [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.8];
+      units.push({ id: `H${h.id}-${q}`, side: h.side, x, y, role: escaping ? "line" : "trapped", rear: [cx, cy] });
+    }
+  }
+  for (const h of r.held || []) {
+    if (!h.end || d < h.end || d - h.end > 6) continue;
+    const [x, y] = landed(h.side, mx(SECT_C[h.sector]), my(frontLat(h.f)));
+    closed.push({ side: h.side, fate: h.fate, x, y, age: d - h.end });
+  }
+  return { arrows, units, pockets, sealed, closed };
+}
+
+// smooth motion: markers glide toward where the day's data puts them, and new ones march up from the rear
+const motion = { units: new Map(), raf: 0, scene: null, t0: performance.now() };
+function setScene(sc) {
+  motion.scene = sc;
+  const seen = new Set();
+  for (const u of sc.units) {
+    seen.add(u.id);
+    const m = motion.units.get(u.id);
+    if (m) Object.assign(m, { tx: u.x, ty: u.y, role: u.role, side: u.side, dead: false });
+    else motion.units.set(u.id, { x: u.rear[0], y: u.rear[1], tx: u.x, ty: u.y, a: 0, role: u.role, side: u.side, dead: false });
+  }
+  for (const [id, m] of motion.units) if (!seen.has(id)) m.dead = true;
+  if (!motion.raf) motion.raf = requestAnimationFrame(tick);
+}
+function resetMotion() { motion.units.clear(); }
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function tick(now) {
+  motion.raf = 0;
+  let busy = false;
+  const k = reduceMotion ? 1 : 0.16;
+  for (const [id, m] of motion.units) {
+    m.x += (m.tx - m.x) * k; m.y += (m.ty - m.y) * k;
+    m.a += ((m.dead ? 0 : 1) - m.a) * (reduceMotion ? 1 : 0.12);
+    if (m.dead && m.a < 0.03) motion.units.delete(id);
+    if (Math.abs(m.tx - m.x) + Math.abs(m.ty - m.y) > 0.3 || Math.abs((m.dead ? 0 : 1) - m.a) > 0.02) busy = true;
+  }
+  drawUnits2D();
+  const animating3D = view3d.on;
+  if (animating3D) render3D(now);
+  if (busy || animating3D) motion.raf = requestAnimationFrame(tick);
+}
+function unitGlyph(m) {
+  const col = m.side === "A" ? "var(--sg)" : "var(--my)";
+  const inner = m.role === "spear" ? `<ellipse cx="0" cy="0" rx="4.2" ry="2.4" fill="none" stroke="${col}" stroke-width="1.3"/>`
+    : `<path d="M-6,-3.5 L6,3.5 M6,-3.5 L-6,3.5" stroke="${col}" stroke-width="1.1"/>`;
+  const ring = m.role === "trapped" ? `<rect x="-9.5" y="-6.5" width="19" height="13" rx="2" fill="none" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 1.5"/>` : "";
+  return `<rect x="-7" y="-4.5" width="14" height="9" fill="var(--panel)" stroke="${col}" stroke-width="1.6"/>${inner}${ring}`;
+}
+function drawUnits2D() {
+  const g = document.getElementById("unitsg"); if (!g) return;
+  const have = new Map([...g.children].map((n) => [n.dataset.id, n]));
+  for (const [id, m] of motion.units) {
+    let n = have.get(id);
+    const key = m.side + m.role;
+    if (!n) { n = document.createElementNS("http://www.w3.org/2000/svg", "g"); n.dataset.id = id; g.appendChild(n); }
+    if (n.dataset.key !== key) { n.innerHTML = unitGlyph(m); n.dataset.key = key; }
+    n.setAttribute("transform", `translate(${m.x.toFixed(1)},${m.y.toFixed(1)})`);
+    n.setAttribute("opacity", m.a.toFixed(2));
+    have.delete(id);
+  }
+  for (const n of have.values()) n.remove();
+}
+function arrowSvg(a) {
+  const col = a.side === "A" ? "var(--sg)" : "var(--my)";
+  const pts = a.pts, n = pts.length, [x1, y1] = pts[n - 1], [x0, y0] = pts[n - 3];
+  const ang = Math.atan2(y1 - y0, x1 - x0), hw = a.w + 4, hl = a.w + 8;
+  const bx = x1 - Math.cos(ang) * hl, by = y1 - Math.sin(ang) * hl;
+  const body = pts.slice(0, n - 1).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ") + ` ${bx.toFixed(1)},${by.toFixed(1)}`;
+  const head = `${x1.toFixed(1)},${y1.toFixed(1)} ${(bx + Math.cos(ang + Math.PI / 2) * hw).toFixed(1)},${(by + Math.sin(ang + Math.PI / 2) * hw).toFixed(1)} ${(bx - Math.cos(ang + Math.PI / 2) * hw).toFixed(1)},${(by - Math.sin(ang + Math.PI / 2) * hw).toFixed(1)}`;
+  return `<polyline points="${body}" fill="none" stroke="var(--panel)" stroke-width="${a.w + 3}" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+    <polyline points="${body}" fill="none" stroke="${col}" stroke-width="${a.w}" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+    <polyline class="flow" points="${body}" fill="none" stroke="${col}" stroke-width="${Math.max(1.5, a.w * 0.45)}" stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="${head}" fill="${col}" stroke="var(--panel)" stroke-width="1"/>`;
+}
+function drawForces2D(sc) {
+  document.getElementById("arrowsg").innerHTML = sc.arrows.map(arrowSvg).join("");
+  let p = "", lb = "";
+  const pl = (pts) => pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  for (const q of sc.pockets) {
+    const enc = q.side === "A" ? "var(--my)" : "var(--sg)", own = q.side === "A" ? "var(--sg)" : "var(--my)";
+    p += `<polygon points="${pl(q.area)}" fill="${own}" fill-opacity=".16" stroke="none"/>`;
+    for (const arm of q.arms) p += `<polyline points="${pl(arm)}" fill="none" stroke="var(--panel)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${pl(arm)}" fill="none" stroke="${enc}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    lb += `<text class="lbl halo" x="${q.x}" y="${q.y + 4}" text-anchor="middle" fill="var(--ink)">Pocket ${Math.round(q.p * 100)}% closed</text>`;
+  }
+  for (const h of sc.sealed) {
+    if (h.fate) continue;
+    const enc = h.side === "A" ? "var(--my)" : "var(--sg)";
+    p += `<polygon points="${pl(h.loop)}" fill="var(--land)"/><polygon points="${pl(h.loop)}" fill="var(${h.side === "A" ? "--sgzone" : "--myzone"})" stroke="var(--panel)" stroke-width="5" stroke-linejoin="round"/><polygon points="${pl(h.loop)}" fill="none" stroke="${enc}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    const sup = h.supply >= 1 ? `${Math.round(h.supply)} days of supplies` : "out of supplies";
+    lb += `<text class="lbl halo" x="${h.x}" y="${h.y - h.rad - 8}" text-anchor="middle" fill="var(--ink)">Cut off: ${h.troops.toFixed(1)}k · ${sup}</text>`;
+  }
+  const FATE = { surrendered: "Surrendered", destroyed: "Wiped out", "broke out": "Broke out", relieved: "Relieved" };
+  for (const c of sc.closed) {
+    const col = c.side === "A" ? "var(--sg)" : "var(--my)", good = c.fate === "broke out" || c.fate === "relieved";
+    lb += `<g opacity="${(1 - c.age / 8).toFixed(2)}"><rect x="${c.x - 38}" y="${c.y - 10}" width="76" height="20" rx="10" fill="var(--panel)" stroke="${good ? col : "var(--ink)"}" stroke-width="1.5"/><text class="lbl" x="${c.x}" y="${c.y + 4}" text-anchor="middle" fill="${good ? col : "var(--ink)"}">${FATE[c.fate]}</text></g>`;
+  }
+  document.getElementById("pocketg").innerHTML = p;
+  document.getElementById("pocketlbl").innerHTML = lb;
+}
+
+// ---------- 3D view: the same map draped over terrain, with the front as a wall you can walk up to ----------
+const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+const VEX = 6;                                    // vertical exaggeration
+const PX_KM = 111 / MAP.W;                        // ~0.185 km per map pixel
+const view3d = { on: false, ready: false, loading: false, visible: true, mode: "orbit",
+  orbit: { tx: 0, tz: 30, theta: 0.0, phi: 0.95, rad: 520 }, walk: { x: 0, z: 0, yaw: 0, pitch: 0 } };
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const col3 = (n) => new THREE.Color(css(n)).convertSRGBToLinear();
+function loadThree() {
+  return new Promise((res, rej) => {
+    if (window.THREE) return res();
+    const s = document.createElement("script"); s.src = THREE_URL; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+// height field from a blurred land mask plus the main hills
+let hMask = null;
+function buildMask() {
+  const c = document.createElement("canvas"); c.width = 300; c.height = 315;
+  const g = c.getContext("2d"); g.scale(0.5, 0.5); g.filter = "blur(2px)"; g.fillStyle = "#fff";
+  g.fill(landPaths.my); g.fill(landPaths.sg);
+  hMask = g.getImageData(0, 0, 300, 315).data;
+}
+const HILL_M = [654, 510, 163];
+function heightAt(x, y) {
+  const mxp = Math.max(0, Math.min(299, x / 2)), myp = Math.max(0, Math.min(314, y / 2));
+  const i0 = Math.floor(mxp), j0 = Math.floor(myp), i1 = Math.min(299, i0 + 1), j1 = Math.min(314, j0 + 1), u = mxp - i0, v = myp - j0;
+  const m = (i, j) => hMask[(j * 300 + i) * 4] / 255;
+  const mask = (m(i0, j0) * (1 - u) + m(i1, j0) * u) * (1 - v) + (m(i0, j1) * (1 - u) + m(i1, j1) * u) * v;
+  let h = -2.2 + 3 * mask;
+  HILLS.forEach(([, lo, la, r], k) => {
+    const dx = x - mx(lo), dy = y - my(la), s = r * 0.75;
+    h += mask * (HILL_M[k] / 1000 / PX_KM) * VEX * Math.exp(-(dx * dx + dy * dy) / (2 * s * s));
+  });
+  h += mask * mask * 0.9 * (Math.sin(x * 0.045) * Math.cos(y * 0.05) + 0.5 * Math.sin(x * 0.11 + y * 0.07));
+  return h;
+}
+const W3 = (x, y, lift = 0) => [x - MAP.W / 2, heightAt(x, y) + lift, y - MAP.H / 2];
+
+function drawGroundTexture(cv, r, d, sc) {
+  const S = cv.width / MAP.W, g = cv.getContext("2d");
+  g.setTransform(S, 0, 0, S, 0, 0);
+  g.fillStyle = css("--water"); g.fillRect(0, 0, MAP.W, MAP.H);
+  g.fillStyle = css("--land"); g.strokeStyle = css("--coast"); g.lineWidth = 0.8;
+  g.fill(landPaths.my); g.stroke(landPaths.my); g.fill(landPaths.sg); g.stroke(landPaths.sg);
+  g.fillStyle = css("--urban"); g.fill(new Path2D(GEO.urban));
+  // who holds the ground
+  const fp = frontPath(r.trS[d], d).map(([lo, la]) => [mx(lo), my(la)]);
+  const strip = fp.map(([x, y]) => [x, y < my(MAP.strait) ? MAP.H + 10 : y]);
+  const polyP = (pts) => { const p = new Path2D(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); p.closePath(); return p; };
+  g.save(); g.clip(landPaths.my);
+  g.fillStyle = css("--myzone"); g.fillRect(0, 0, MAP.W, MAP.H);
+  const sgJ = polyP([...fp, ...strip.slice().reverse()]);
+  g.fillStyle = css("--land"); g.fill(sgJ); g.fillStyle = css("--urban"); g.globalAlpha = 0.6; g.fill(new Path2D(GEO.urban)); g.globalAlpha = 1;
+  g.fillStyle = css("--sgzone"); g.fill(sgJ);
+  g.restore();
+  g.save(); g.clip(landPaths.sg);
+  g.fillStyle = css("--sgzone"); g.fill(polyP([...fp, [MAP.W + 10, MAP.H + 10], [-10, MAP.H + 10]]));
+  g.fillStyle = css("--myzone"); g.fill(polyP([...fp, [MAP.W + 10, -10], [-10, -10]]));
+  g.restore();
+  // roads, rail
+  g.strokeStyle = css("--road"); g.lineCap = "round";
+  GEO.roads.forEach(([t, dd]) => { g.lineWidth = t === "Major Highway" ? 1.8 : 1; g.stroke(new Path2D(dd)); });
+  g.strokeStyle = css("--ink-3"); g.lineWidth = 0.8; g.setLineDash([3, 2]); GEO.rail.forEach((dd) => g.stroke(new Path2D(dd)));
+  // older front lines, one a week back
+  g.setLineDash([3, 3]); g.lineWidth = 1;
+  for (let k = 1; k <= 4; k++) {
+    const dd = d - k * 7; if (dd < 0) break;
+    g.globalAlpha = 0.6 - k * 0.12; g.strokeStyle = css("--ink-3");
+    g.beginPath(); frontPath(r.trS[dd], dd).forEach(([lo, la], i) => (i ? g.lineTo(mx(lo), my(la)) : g.moveTo(mx(lo), my(la)))); g.stroke();
+  }
+  g.globalAlpha = 1;
+  // cores
+  for (const [k, f, col] of [["A", -r.depth.A, "--sg"], ["B", r.depth.B, "--my"]]) {
+    const y = my(frontLat(f)); if (y < 0 || y > MAP.H) continue;
+    g.strokeStyle = css(col); g.lineWidth = 1.2; g.setLineDash([6, 4]); g.beginPath(); g.moveTo(0, y); g.lineTo(MAP.W, y); g.stroke();
+  }
+  g.setLineDash([]);
+  // pockets on the ground
+  const pathOf = (pts, close) => { const P = new Path2D(); pts.forEach(([x, y], i) => (i ? P.lineTo(x, y) : P.moveTo(x, y))); if (close) P.closePath(); return P; };
+  for (const q of sc.pockets) {
+    g.fillStyle = css(q.side === "A" ? "--sg" : "--my"); g.globalAlpha = 0.18; g.fill(pathOf(q.area, true)); g.globalAlpha = 1;
+    g.strokeStyle = css(q.side === "A" ? "--my" : "--sg"); g.lineWidth = 2; q.arms.forEach((a) => g.stroke(pathOf(a)));
+  }
+  for (const h of sc.sealed) {
+    if (h.fate) continue;
+    const P = pathOf(h.loop, true);
+    g.fillStyle = css("--land"); g.fill(P); g.fillStyle = css(h.side === "A" ? "--sgzone" : "--myzone"); g.fill(P);
+    g.strokeStyle = css(h.side === "A" ? "--my" : "--sg"); g.lineWidth = 2; g.stroke(P);
+  }
+  // front line on the ground
+  g.strokeStyle = css("--panel"); g.lineWidth = 4; g.beginPath(); fp.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+  g.strokeStyle = css(r.trF[d] >= 0 ? "--sg" : "--my"); g.lineWidth = 2; g.stroke();
+  // labels
+  g.fillStyle = css("--ink-2"); g.font = `500 11px ${css("--f-body")}`;
+  
+  g.fillStyle = css("--ink-3"); g.font = `italic 11px ${css("--f-body")}`;
+  g.fillText("Strait of Malacca", mx(103.235), my(1.30)); g.fillText("Singapore Strait", mx(103.88), my(1.225));
+  // landings
+  for (const L of r.landings || []) {
+    const end = L.end ?? r.turns; if (d < L.day || d > end) continue;
+    const x = mx(SECT_C[L.sector] + (L.side === "A" ? -0.02 : 0.02)), y = my(frontLat(L.f));
+    g.strokeStyle = css(L.side === "A" ? "--sg" : "--my"); g.lineWidth = 2; g.fillStyle = css("--panel");
+    g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); g.stroke();
+  }
+}
+
+function glyphTexture(side, role) {
+  const c = document.createElement("canvas"); c.width = 128; c.height = 96;
+  const g = c.getContext("2d"), col = css(side === "A" ? "--sg" : "--my");
+  g.fillStyle = css("--panel"); g.strokeStyle = col; g.lineWidth = 9;
+  g.fillRect(10, 10, 108, 70); g.strokeRect(10, 10, 108, 70);
+  g.lineWidth = 7;
+  if (role === "spear") { g.beginPath(); g.ellipse(64, 45, 32, 18, 0, 0, 7); g.stroke(); }
+  else { g.beginPath(); g.moveTo(14, 14); g.lineTo(114, 76); g.moveTo(114, 14); g.lineTo(14, 76); g.stroke(); }
+  if (role === "trapped") { g.strokeStyle = css("--ink"); g.lineWidth = 4; g.setLineDash([8, 6]); g.strokeRect(3, 3, 122, 84); }
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; t.encoding = THREE.sRGBEncoding; return t;
+}
+function labelTexture(text, color) {
+  const c = document.createElement("canvas"), g = c.getContext("2d"), f = `600 40px ${css("--f-body")}`;
+  g.font = f; const w = Math.ceil(g.measureText(text).width) + 28; c.width = w; c.height = 60;
+  g.font = f; g.fillStyle = css("--panel"); g.globalAlpha = 0.85; g.fillRect(0, 0, w, 60); g.globalAlpha = 1;
+  g.fillStyle = color; g.textBaseline = "middle"; g.fillText(text, 14, 31);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return [t, w / 60];
+}
+function chevronTexture() {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 32; const g = c.getContext("2d");
+  g.fillStyle = "rgba(255,255,255,0.35)"; g.fillRect(0, 0, 64, 32);
+  g.fillStyle = "#fff"; g.beginPath(); g.moveTo(8, 2); g.lineTo(34, 16); g.lineTo(8, 30); g.lineTo(20, 16); g.closePath(); g.fill();
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; return t;
+}
+
+function init3D() {
+  const box = document.getElementById("map3d");
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  R.setPixelRatio(Math.min(2, devicePixelRatio)); R.outputEncoding = THREE.sRGBEncoding; box.appendChild(R.domElement);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(50, 600 / 630, 0.3, 4000);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x6f7466, 0.62));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.5); sun.position.set(-200, 400, -150); scene.add(sun);
+  buildMask();
+  // terrain
+  const NX = 240, NY = 252, pos = [], uv = [], idx = [];
+  for (let j = 0; j <= NY; j++) for (let i = 0; i <= NX; i++) {
+    const x = (i / NX) * MAP.W, y = (j / NY) * MAP.H;
+    pos.push(x - MAP.W / 2, heightAt(x, y), y - MAP.H / 2); uv.push(i / NX, 1 - j / NY);
+  }
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const a = j * (NX + 1) + i, b = a + 1, c = a + NX + 1, e = c + 1; idx.push(a, c, b, b, c, e); }
+  const tg = new THREE.BufferGeometry();
+  tg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); tg.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); tg.setIndex(idx); tg.computeVertexNormals();
+  const texCanvas = document.createElement("canvas"); texCanvas.width = 1500; texCanvas.height = 1575;
+  const groundTex = new THREE.CanvasTexture(texCanvas); groundTex.anisotropy = R.capabilities.getMaxAnisotropy(); groundTex.encoding = THREE.sRGBEncoding;
+  const terrain = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ map: groundTex })); scene.add(terrain);
+  // skirt under the map edges so it reads as a slab
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(MAP.W, 8, MAP.H), new THREE.MeshLambertMaterial({ color: 0x7a7f72 }));
+  slab.position.y = -6.3; scene.add(slab);
+  // front wall
+  const NP = frontPath(new Array(SECTORS.length).fill(0), 0).length;
+  const wg = new THREE.BufferGeometry();
+  wg.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(NP * 2 * 3), 3));
+  wg.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(NP * 2 * 3), 3));
+  const wi = []; for (let q = 0; q < NP - 1; q++) { const a = q * 2; wi.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } wg.setIndex(wi);
+  const wall = new THREE.Mesh(wg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+  scene.add(wall);
+  const topG = new THREE.BufferGeometry(); topG.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(NP * 3), 3));
+  const topLine = new THREE.Line(topG, new THREE.LineBasicMaterial({ color: 0xffffff })); scene.add(topLine);
+  const arrowsG = new THREE.Group(), unitsG = new THREE.Group(), pocketsG = new THREE.Group(), labelsG = new THREE.Group();
+  scene.add(arrowsG, unitsG, pocketsG, labelsG);
+  Object.assign(view3d, { R, scene, cam, terrain, groundTex, texCanvas, wall, wg, topG, topLine, NP, arrowsG, unitsG, pocketsG, labelsG,
+    chev: chevronTexture(), glyphs: {}, unitSprites: new Map(), ready: true });
+  buildLabels3D();
+  bindControls(R.domElement);
+  new ResizeObserver(size3D).observe(box); size3D();
+  new IntersectionObserver((es) => { view3d.visible = es[0].isIntersecting; if (view3d.visible && view3d.on && !motion.raf) motion.raf = requestAnimationFrame(tick); }).observe(box);
+}
+function buildLabels3D() {
+  const G = view3d.labelsG; G.clear();
+  const big = [["Johor Bahru", 103.76, 1.49], ["Woodlands", 103.79, 1.437], ["Kota Tinggi", 103.90, 1.73], ["Kluang", 103.32, 2.03], ["Pontian", 103.39, 1.49],
+    ["City centre", 103.85, 1.287], ["Jurong", 103.71, 1.335], ["Changi", 103.99, 1.355], ["Gunung Pulai", 103.545, 1.605], ["Gunung Panti", 103.885, 1.84]];
+  for (const [n, lo, la] of big) {
+    const [t, asp] = labelTexture(n, css("--ink"));
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: true, transparent: true }));
+    const [x, y, z] = W3(mx(lo), my(la), 9); s.position.set(x, y, z); s.scale.set(6 * asp, 6, 1); s.userData.base = [6 * asp, 6];
+    G.add(s);
+  }
+}
+function size3D() {
+  const box = document.getElementById("map3d"), w = box.clientWidth, h = Math.round(w * 630 / 600);
+  box.style.height = h + "px"; view3d.R.setSize(w, h); view3d.cam.aspect = w / h; view3d.cam.updateProjectionMatrix();
+}
+function glyph(side, role) { const k = side + role; return view3d.glyphs[k] || (view3d.glyphs[k] = glyphTexture(side, role)); }
+function themeColors3D() {
+  const dark = (css("--bg").match(/#(..)/) || [0, "ff"])[1] < "80";
+  view3d.scene.background = new THREE.Color(dark ? 0x0e161d : 0xcfdde6).convertSRGBToLinear();
+  view3d.scene.fog = new THREE.Fog(view3d.scene.background, view3d.mode === "walk" ? 80 : 500, view3d.mode === "walk" ? 700 : 1600);
+  view3d.topLine.material.color.copy(col3("--panel"));
+  view3d.glyphs = {}; buildLabels3D();
+}
+
+function update3D(r, d, sc) {
+  if (!view3d.ready) return;
+  const V = view3d;
+  drawGroundTexture(V.texCanvas, r, d, sc); V.groundTex.needsUpdate = true;
+  // the front wall, coloured by who is gaining ground there this week
+  const fs = r.trS[d], back = r.trS[Math.max(0, d - 5)];
+  const fp = frontPath(fs, d), P = V.wg.attributes.position.array, C = V.wg.attributes.color.array, T = V.topG.attributes.position.array;
+  const cA = col3("--sg"), cB = col3("--my"), cN = col3("--ink-3");
+  fp.forEach(([lo, la], q) => {
+    const x = mx(lo), y = my(la), [X, Y, Z] = W3(x, y, 0), hh = 7;
+    P.set([X, Math.max(Y, 0) - 0.5, Z, X, Math.max(Y, 0) + hh, Z], q * 6);
+    T.set([X, Math.max(Y, 0) + hh, Z], q * 3);
+    const mv = sectorValueAt(fs, lo) - sectorValueAt(back, lo);
+    const c = Math.abs(mv) < 0.03 ? cN : mv > 0 ? cA : cB;
+    C.set([c.r, c.g, c.b, c.r, c.g, c.b], q * 6);
+  });
+  V.wg.attributes.position.needsUpdate = true; V.wg.attributes.color.needsUpdate = true; V.topG.attributes.position.needsUpdate = true;
+  V.wg.computeBoundingSphere(); V.topG.computeBoundingSphere();
+  // arrows: raised ribbons with chevrons flowing along them
+  V.arrowsG.children.forEach((m) => { m.geometry.dispose(); m.material.dispose(); }); V.arrowsG.clear();
+  for (const a of sc.arrows) {
+    const pts = a.pts, n = pts.length, w = 0.9 + a.w * 0.55, pos = [], uv = [], ix = [];
+    let len = 0;
+    for (let q = 0; q < n; q++) {
+      const [x, y] = pts[q], [x2, y2] = pts[Math.min(n - 1, q + 1)], [x0, y0] = pts[Math.max(0, q - 1)];
+      if (q) len += Math.hypot(x - pts[q - 1][0], y - pts[q - 1][1]);
+      const tx = x2 - x0, ty = y2 - y0, tl = Math.hypot(tx, ty) || 1, nx = -ty / tl, ny = tx / tl;
+      const taper = q > n - 4 ? Math.max(0.05, (n - 1 - q) / 3) * 2.2 : 1;
+      const ww = w * taper;
+      const h = Math.max(heightAt(x, y), 0) + 3.2;
+      pos.push(x + nx * ww - MAP.W / 2, h, y + ny * ww - MAP.H / 2, x - nx * ww - MAP.W / 2, h, y - ny * ww - MAP.H / 2);
+      uv.push(len / 14, 0, len / 14, 1);
+      if (q < n - 1) { const b = q * 2; ix.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(ix);
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: V.chev, color: col3(a.side === "A" ? "--sg" : "--my"), transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    V.arrowsG.add(m);
+  }
+  // pockets: a curtain that wraps round the salient as the pincers close
+  V.pocketsG.children.forEach((m) => { m.geometry.dispose(); m.material.dispose(); }); V.pocketsG.clear();
+  const wallOf = (pts, color, h) => {
+    const pos = [], ix = [];
+    pts.forEach(([x, y], q) => { const b = Math.max(heightAt(x, y), 0); pos.push(x - MAP.W / 2, b - 0.5, y - MAP.H / 2, x - MAP.W / 2, b + h, y - MAP.H / 2); if (q < pts.length - 1) ix.push(q * 2, q * 2 + 1, q * 2 + 2, q * 2 + 1, q * 2 + 3, q * 2 + 2); });
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(ix);
+    V.pocketsG.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })));
+  };
+  for (const q of sc.pockets) for (const arm of q.arms) wallOf(arm, col3(q.side === "A" ? "--my" : "--sg"), 7);
+  for (const h of sc.sealed) if (!h.fate) wallOf([...h.loop, h.loop[0]], col3(h.side === "A" ? "--my" : "--sg"), 6);
+}
+function render3D(now) {
+  const V = view3d; if (!V.ready || !V.visible) return;
+  // unit markers follow the same gliding positions as the 2D map
+  const seen = new Set();
+  for (const [id, m] of motion.units) {
+    seen.add(id);
+    let s = V.unitSprites.get(id);
+    if (!s) { s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true })); V.unitsG.add(s); V.unitSprites.set(id, s); }
+    const key = m.side + m.role;
+    if (s.userData.key !== key) { s.material.map = glyph(m.side, m.role); s.material.needsUpdate = true; s.userData.key = key; }
+    s.material.opacity = m.a;
+    const [X, Y, Z] = W3(m.x, m.y, 0); s.position.set(X, Math.max(Y, 0) + 3.4, Z); s.scale.set(7, 5.25, 1);
+  }
+  for (const [id, s] of V.unitSprites) if (!seen.has(id)) { V.unitsG.remove(s); s.material.dispose(); V.unitSprites.delete(id); }
+  for (const s of V.labelsG.children) {
+    const k = Math.max(0.15, Math.min(1, s.position.distanceTo(V.cam.position) / 160)), [bw, bh] = s.userData.base;
+    s.scale.set(bw * k, bh * k, 1);
+  }
+  if (!reduceMotion) V.chev.offset.x = -((now || 0) / 900) % 1;
+  placeCamera();
+  V.R.render(V.scene, V.cam);
+}
+function placeCamera() {
+  const V = view3d, c = V.cam;
+  if (V.mode === "orbit") {
+    const o = V.orbit;
+    c.position.set(o.tx + o.rad * Math.sin(o.phi) * Math.sin(o.theta), o.rad * Math.cos(o.phi), o.tz + o.rad * Math.sin(o.phi) * Math.cos(o.theta));
+    c.up.set(0, 1, 0); c.lookAt(o.tx, 0, o.tz);
+  } else {
+    const w = V.walk, x = w.x + MAP.W / 2, y = w.z + MAP.H / 2;
+    const eye = Math.max(heightAt(x, y), 0) + 3;
+    c.position.set(w.x, eye, w.z);
+    c.lookAt(w.x + Math.sin(w.yaw) * Math.cos(w.pitch), eye + Math.sin(w.pitch), w.z - Math.cos(w.yaw) * Math.cos(w.pitch));
+  }
+}
+function setView(kind) {
+  const V = view3d;
+  const stand = (lo, la, face) => { V.mode = "walk"; V.walk = { x: mx(lo) - MAP.W / 2, z: my(la) - MAP.H / 2, yaw: face, pitch: -0.08 }; };
+  if (kind === "overhead") { V.mode = "orbit"; V.orbit = { tx: 0, tz: 0, theta: 0, phi: 0.02, rad: 720 }; }
+  if (kind === "tilted") { V.mode = "orbit"; V.orbit = { tx: 0, tz: 30, theta: 0.0, phi: 0.95, rad: 520 }; }
+  if (kind === "low") { V.mode = "orbit"; V.orbit = { tx: 40, tz: -20, theta: -0.6, phi: 1.32, rad: 260 }; }
+  if (kind === "woodlands") stand(103.79, 1.425, 0);
+  if (kind === "jb") stand(103.75, 1.53, Math.PI);
+  document.querySelectorAll("#view3dctl [data-v]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === kind)));
+  themeColors3D(); kick3D();
+}
+function kick3D() { if (view3d.on && !motion.raf) motion.raf = requestAnimationFrame(tick); }
+function bindControls(el) {
+  const V = view3d, ptrs = new Map(); let pinch = 0;
+  el.style.touchAction = "none";
+  el.addEventListener("pointerdown", (e) => { el.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY, e.button, e.shiftKey]); markCustom(); });
+  el.addEventListener("pointerup", (e) => { ptrs.delete(e.pointerId); pinch = 0; });
+  el.addEventListener("pointercancel", (e) => { ptrs.delete(e.pointerId); pinch = 0; });
+  el.addEventListener("pointermove", (e) => {
+    const p = ptrs.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p[0], dy = e.clientY - p[1];
+    ptrs.set(e.pointerId, [e.clientX, e.clientY, p[2], p[3]]);
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (pinch) zoom3D(pinch / dist);
+      pinch = dist; if (V.mode === "orbit") pan3D(dx / 2, dy / 2); kick3D(); return;
+    }
+    if (V.mode === "walk") { V.walk.yaw += dx * 0.005; V.walk.pitch = Math.max(-1.2, Math.min(1.0, V.walk.pitch - dy * 0.004)); }
+    else if (p[2] === 2 || p[3]) pan3D(dx, dy);
+    else { V.orbit.theta -= dx * 0.006; V.orbit.phi = Math.max(0.02, Math.min(1.45, V.orbit.phi - dy * 0.005)); }
+    kick3D();
+  });
+  el.addEventListener("contextmenu", (e) => e.preventDefault());
+  el.addEventListener("wheel", (e) => { e.preventDefault(); markCustom(); zoom3D(Math.exp(e.deltaY * 0.0012)); kick3D(); }, { passive: false });
+  el.addEventListener("dblclick", (e) => {
+    // stand on the spot that was double-clicked, facing the front
+    const rc = new THREE.Raycaster(), rect = el.getBoundingClientRect();
+    rc.setFromCamera({ x: ((e.clientX - rect.left) / rect.width) * 2 - 1, y: -((e.clientY - rect.top) / rect.height) * 2 + 1 }, V.cam);
+    const hit = rc.intersectObject(V.terrain)[0]; if (!hit) return;
+    const x = hit.point.x + MAP.W / 2, y = hit.point.z + MAP.H / 2;
+    const r = replay.run, fy = r ? my(frontLat(sectorValueAt(r.trS[replay.day], MAP.lon0 + (x / MAP.W) * (MAP.lon1 - MAP.lon0)))) : y;
+    V.mode = "walk"; V.walk = { x: hit.point.x, z: hit.point.z, yaw: fy < y ? 0 : Math.PI, pitch: -0.06 };
+    markCustom(); themeColors3D(); kick3D();
+  });
+  addEventListener("keydown", (e) => {
+    if (!V.on || V.mode !== "walk" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    const k = e.key.toLowerCase(), step = 3;
+    const f = k === "w" || k === "arrowup" ? 1 : k === "s" || k === "arrowdown" ? -1 : 0, sd = k === "d" ? 1 : k === "a" ? -1 : 0;
+    if (k === "arrowleft") V.walk.yaw -= 0.06; else if (k === "arrowright") V.walk.yaw += 0.06; else if (!f && !sd) return;
+    e.preventDefault();
+    V.walk.x += (Math.sin(V.walk.yaw) * f + Math.cos(V.walk.yaw) * sd) * step; V.walk.z += (-Math.cos(V.walk.yaw) * f + Math.sin(V.walk.yaw) * sd) * step;
+    clampWalk(); kick3D();
+  });
+}
+function clampWalk() { const w = view3d.walk; w.x = Math.max(-MAP.W / 2, Math.min(MAP.W / 2, w.x)); w.z = Math.max(-MAP.H / 2, Math.min(MAP.H / 2, w.z)); }
+function markCustom() { document.querySelectorAll("#view3dctl [data-v]").forEach((b) => b.setAttribute("aria-pressed", "false")); }
+function zoom3D(f) {
+  const V = view3d;
+  if (V.mode === "orbit") V.orbit.rad = Math.max(40, Math.min(1100, V.orbit.rad * f));
+  else { const st = (f - 1) * -40; V.walk.x += Math.sin(V.walk.yaw) * st; V.walk.z -= Math.cos(V.walk.yaw) * st; clampWalk(); }
+}
+function pan3D(dx, dy) {
+  const o = view3d.orbit, s = o.rad / 600;
+  o.tx += (-Math.cos(o.theta) * dx - Math.sin(o.theta) * dy) * s;
+  o.tz += (Math.sin(o.theta) * dx - Math.cos(o.theta) * dy) * s;
+  o.tx = Math.max(-320, Math.min(320, o.tx)); o.tz = Math.max(-330, Math.min(330, o.tz));
+}
+async function show3D(on) {
+  view3d.on = on;
+  document.getElementById("map").style.display = on ? "none" : "";
+  document.getElementById("map3d").hidden = !on;
+  document.querySelector(".inset").style.display = on ? "none" : "";
+  document.getElementById("view3dctl").hidden = !on;
+  document.querySelectorAll("#viewtoggle button").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.view === "3d") === on)));
+  if (!on) return;
+  const msg = document.getElementById("map3dmsg");
+  if (!view3d.ready) {
+    if (view3d.loading) return;
+    view3d.loading = true; msg.hidden = false; msg.textContent = "Loading the 3D view…";
+    try { await loadThree(); init3D(); msg.hidden = true; }
+    catch (err) { msg.textContent = "The 3D view could not load here (it needs WebGL and the three.js library). The 2D map still works."; view3d.loading = false; return; }
+    themeColors3D();
+  }
+  if (replay.run) drawMapDay();
+  kick3D();
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (view3d.ready) { themeColors3D(); if (replay.run) drawMapDay(); } });
+
+const meter = (lab, val, frac) => `<div class="meter"><div class="top"><span>${lab}</span><b>${val}</b></div><div class="tr"><i style="width:${Math.max(0, Math.min(1, frac)) * 100}%"></i></div></div>`;
+
+function buildLog(r) {
+  const ev = [];
+  const sgC = "var(--sg)", myC = "var(--my)", nC = "var(--draw)";
+  const col = { A: sgC, B: myC };
+  ev.push([0, "War begins. Both sides hold the Strait of Johor.", nC]);
+  const sA = STRATEGIES.A[state["A.strategy"] || 0], sB = STRATEGIES.B[state["B.strategy"] || 0];
+  ev.push([0, `Singapore's plan: ${sA.name.toLowerCase()}. Malaysia's plan: ${sB.name.toLowerCase()}.`, nC]);
+  if (r.fired.includes("Malaysia achieves surprise")) ev.push([0, "Malaysia strikes first and catches Singapore before it mobilises. Singapore's air bases, command network and supply lines are hit.", myC]);
+  if (r.fired.includes("Singapore achieves surprise")) ev.push([0, "Singapore strikes first at Malaysian airfields and command posts.", sgC]);
+  if (r.fired.includes("Monsoon weather limits air operations")) ev.push([0, "Monsoon weather keeps most aircraft grounded.", nC]);
+  if (r.fired.includes("Water and food imports to Singapore cut")) ev.push([3, "Malaysia shuts off the water pipeline from Johor.", myC]);
+  ev.push([Math.floor(r.delays.A) + 1, "Singapore's reservists start reaching the front.", sgC]);
+  ev.push([Math.floor(r.delays.B) + 1, "Malaysia's reservists start reaching the front.", myC]);
+  if (r.fired.includes("Outside power arms Malaysia mid-war")) ev.push([10, "An outside power starts supplying Malaysia with aircraft and equipment.", myC]);
+  if (r.fired.includes("Outside power arms Singapore mid-war")) ev.push([10, "An outside power starts supplying Singapore with aircraft and spares.", sgC]);
+  for (const [d, k, t] of r.notes) ev.push([d, t, col[k] || nC]);
+  // sector milestones: first crossing of the Strait, towns reached
+  const crossed = SECTORS.map(() => 0);
+  const passed = new Set();
+  for (let d = 1; d < r.trS.length; d++) {
+    const fs = r.trS[d];
+    SECTORS.forEach((sx, i) => {
+      const side = fs[i] > 0.05 ? 1 : fs[i] < -0.05 ? -1 : 0;
+      if (side !== 0 && side !== crossed[i]) {
+        ev.push([d, side > 0 ? `Singapore pushes across the Strait in the ${sx.name} sector.` : `Malaysian troops get across the Strait in the ${sx.name} sector.`, side > 0 ? sgC : myC]);
+        crossed[i] = side;
+      }
+    });
+    for (const [n, lo, la, c] of PLACES) {
+      if (passed.has(n)) continue;
+      const lat = frontLat(sectorValueAt(fs, lo));
+      if (c === "MY" && lat >= la && la > MAP.strait) { passed.add(n); ev.push([d, `Singaporean forces reach ${n}.`, sgC]); }
+      if (c === "SG" && lat <= la) { passed.add(n); ev.push([d, `Malaysian forces reach ${n}.`, myC]); }
+    }
+    const dmA = r.trMA[d] - r.trMA[d - 1], dmB = r.trMB[d] - r.trMB[d - 1];
+    if (dmA < -0.05) ev.push([d, "A heavy blow shakes Singapore's morale.", myC]);
+    if (dmB < -0.05) ev.push([d, "A heavy blow shakes Malaysia's morale.", sgC]);
+    if (d % 30 === 0) ev.push([d, `Day ${d}: Singapore has lost ${r.trLA[d].toFixed(1)}k combat strength, Malaysia ${r.trLB[d].toFixed(1)}k. Morale ${Math.round(r.trMA[d] * 100)}% vs ${Math.round(r.trMB[d] * 100)}%.`, nC]);
+  }
+  const T = r.turns;
+  if (r.outcome === "stalemate") ev.push([T, r.reason === "ceasefire imposed" ? "Outside powers impose a ceasefire. Nobody wins." : "The war is still undecided at the time limit.", nC]);
+  else {
+    const w = r.outcome === "A" ? "Singapore" : "Malaysia", l = r.outcome === "A" ? "Malaysia" : "Singapore";
+    ev.push([T, `${reasonText(r.reason, l)}. ${w} wins.`, r.outcome === "A" ? sgC : myC]);
+  }
+  ev.sort((a, b) => a[0] - b[0]);
+  document.getElementById("log").innerHTML = ev.filter((e) => e[0] <= T)
+    .map(([d, t, c]) => `<li data-day="${d}"><span class="d">D${d}</span><span><i style="--c:${c}"></i>${t}</span></li>`).join("");
+}
+
+function pickRun(kind) {
+  const runs = lastRuns; if (!runs || !runs.length) return;
+  let pool = kind === "any" || kind === "long" || kind === "pocket" ? runs : runs.filter((r) => r.outcome === kind);
+  if (!pool.length) pool = runs;
+  let r;
+  if (kind === "any") r = pool[Math.floor(Math.random() * pool.length)];
+  else if (kind === "long") r = [...runs].sort((a, b) => b.turns - a.turns)[0];
+  else if (kind === "pocket") {
+    const w = runs.filter((x) => (x.held || []).length);
+    const score = (x) => new Set(x.held.map((h) => h.fate || "holding")).size * 10 + x.held.length;
+    r = w.length ? w.sort((a, b) => score(b) - score(a))[Math.floor(Math.random() * Math.min(5, w.length))] : runs[0];
+  }
+  else { const s = [...pool].sort((a, b) => a.turns - b.turns); r = s[Math.floor(s.length / 2)]; }
+  stopPlay();
+  replay.run = r; replay.day = 0; replay.kind = kind; resetMotion();
+  const dayEl = document.getElementById("day"); dayEl.max = r.turns;
+  document.querySelectorAll("#pick .chip").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.k === kind)));
+  buildLog(r); drawMapDay();
+}
+function buildPick() {
+  const el = document.getElementById("pick");
+  const opts = [["A", "A typical Singapore win"], ["B", "A typical Malaysia win"], ["stalemate", "A typical ceasefire"], ["long", "The longest war"], ["pocket", "A war with encirclements"], ["any", "A random war"]];
+  el.innerHTML = opts.map(([k, n]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="false">${n}</button>`).join("");
+  el.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) pickRun(b.dataset.k); });
+  document.getElementById("viewtoggle").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) show3D(b.dataset.view === "3d"); });
+  document.getElementById("view3dctl").addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) setView(b.dataset.v); });
+  document.getElementById("day").addEventListener("input", (e) => { stopPlay(); replay.day = +e.target.value; drawMapDay(); });
+  document.getElementById("play").addEventListener("click", () => {
+    if (replay.timer) { stopPlay(); return; }
+    if (!replay.run) return;
+    if (replay.day >= replay.run.turns) replay.day = 0;
+    document.getElementById("play").textContent = "❚❚ Pause";
+    startTimer();
+  });
+  document.getElementById("speed").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    replay.speed = +b.dataset.s;
+    document.querySelectorAll("#speed button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    if (replay.timer) startTimer();
+  });
+}
+// x1 is about 4 days a second; faster speeds skip days rather than redraw faster than the screen can show
+function startTimer() {
+  clearInterval(replay.timer);
+  const sp = replay.speed || 1, ms = 250 / sp, step = Math.max(1, Math.round(40 / ms));
+  replay.timer = setInterval(() => {
+    if (replay.day >= replay.run.turns) { stopPlay(); return; }
+    replay.day = Math.min(replay.run.turns, replay.day + step); drawMapDay();
+  }, Math.max(40, ms));
+}
+function stopPlay() { clearInterval(replay.timer); replay.timer = null; const b = document.getElementById("play"); if (b) b.textContent = "▶ Play"; }
+function refreshReplay(a) {
+  // after each re-run, show the most common decisive outcome (or the same kind as before)
+  let kind = replay.kind;
+  if (!kind || kind === "any") kind = a.p.A >= a.p.B ? (a.p.A > 0 ? "A" : "stalemate") : "B";
+  pickRun(kind);
+}
+
+let lastRuns = null;
+let timer = null;
+function schedule(ms = 120) {
+  clearTimeout(timer);
+  document.getElementById("status").textContent = "Running…";
+  timer = setTimeout(run, ms);
+}
+// The simulation runs in a background worker so the sliders stay smooth; falls back to the page thread if workers are unavailable.
+let worker = null, jobId = 0;
+const pending = new Map();
+try {
+  const src = document.getElementById("engine-src").textContent +
+    "\nonmessage = (e) => { const { id, sc, n, seed, lite } = e.data; const runs = runBatch(sc, n, seed); const a = analyse(runs); postMessage({ id, a, runs: lite ? null : runs }); };";
+  worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+  worker.onmessage = (e) => { const cb = pending.get(e.data.id); pending.delete(e.data.id); if (cb) cb(e.data); };
+  worker.onerror = () => { worker = null; };
+} catch (e) { worker = null; }
+function simulate(sc, n, sd, lite) {
+  return new Promise((resolve) => {
+    if (!worker) { const runs = runBatch(sc, n, sd); resolve({ a: analyse(runs), runs: lite ? null : runs }); return; }
+    const id = ++jobId; pending.set(id, resolve); worker.postMessage({ id, sc, n, seed: sd, lite });
+  });
+}
+let latest = 0;
+async function run() {
+  const t0 = performance.now();
+  const ticket = ++latest;
+  if (!baseline) baseline = (await simulate(buildScenario(DEFAULTS), 1000, 7, true)).a.p;
+  const { a, runs } = await simulate(buildScenario(state), runsN, seed, false);
+  if (ticket !== latest) return;   // a newer slider change is already running
+  lastRuns = runs;
+  const isBase = Object.keys(DEFAULTS).every((k) => DEFAULTS[k] === state[k]);
+  for (const [o, id] of [["A", "A"], ["B", "B"], ["stalemate", "S"]]) {
+    document.getElementById("p" + id).textContent = pct(a.p[o]);
+    document.getElementById("s" + id).textContent = pct(a.p[o]);
+    renderDelta("d" + id, a.p[o], isBase ? null : baseline[o]);
+  }
+  const spans = document.querySelectorAll("#bar span");
+  spans[0].style.width = a.p.A * 100 + "%"; spans[1].style.width = a.p.B * 100 + "%"; spans[2].style.width = a.p.stalemate * 100 + "%";
+  document.getElementById("verdict").innerHTML = verdictText(a);
+  renderDrivers(a, "A", document.getElementById("drvA"));
+  renderDrivers(a, "B", document.getElementById("drvB"));
+  renderEnds(a);
+  const maxT = Math.max(...runs.map((r) => r.turns), 10);
+  renderHist(runs, maxT);
+  renderFront(runs, maxT, state);
+  refreshReplay(a);
+  const ms = Math.round(performance.now() - t0);
+  const moe = Math.round(196 * Math.sqrt(0.25 / runsN));
+  document.getElementById("status").textContent = `${runsN} simulated wars · ±${moe} pts luck · ${(ms / 1000).toFixed(1)} s`;
+  try { localStorage.setItem("sgmy-knobs-v5", JSON.stringify({ state, runs: runsN })); } catch (e) {}
+}
+
+buildPresets(); buildKnobs(); buildRuns(); syncOutputs(); markPreset(); drawMapStatic(); buildPick();
+async function runMatchups() {
+  const btn = document.getElementById("matchBtn"); btn.disabled = true;
+  let h = `<table><thead><tr><th class="rowh">Singapore ↓ / Malaysia →</th>${STRATEGIES.B.map((s) => `<th class="colh">${s.name}</th>`).join("")}</tr></thead><tbody>`;
+  STRATEGIES.A.forEach((sa, i) => {
+    h += `<tr><th class="rowh">${sa.name}</th>` + STRATEGIES.B.map((_, j) => `<td id="mu${i}_${j}"><span class="l">…</span></td>`).join("") + `</tr>`;
+  });
+  document.getElementById("mgrid").innerHTML = h + `</tbody></table>`;
+  let done = 0;
+  for (let i = 0; i < STRATEGIES.A.length; i++) for (let j = 0; j < STRATEGIES.B.length; j++) {
+    btn.textContent = `Running ${done + 1} of 25…`;
+    const { a } = await simulate(buildScenario({ ...state, "A.strategy": i, "B.strategy": j }), 250, seed, true);
+    const td = document.getElementById(`mu${i}_${j}`);
+    if (state["A.strategy"] === i && state["B.strategy"] === j) td.className = "cur";
+    td.style.background = a.p.A > a.p.B ? `color-mix(in srgb, var(--sg) ${Math.round(Math.min(1, a.p.A - a.p.B) * 40)}%, transparent)` : `color-mix(in srgb, var(--my) ${Math.round(Math.min(1, a.p.B - a.p.A) * 40)}%, transparent)`;
+    td.innerHTML = `<span class="w">SG ${pct(a.p.A)}</span><span class="l">MY ${pct(a.p.B)}</span>`;
+    done++;
+  }
+  btn.textContent = "Re-run match-ups"; btn.disabled = false;
+}
+document.getElementById("matchBtn").addEventListener("click", runMatchups);
+document.getElementById("reset").addEventListener("click", () => { state = { ...DEFAULTS }; syncOutputs(); markPreset(); schedule(0); });
+document.getElementById("reroll").addEventListener("click", () => { seed = (seed * 1664525 + 1013904223) >>> 0; schedule(0); });
+run();
+</script>
